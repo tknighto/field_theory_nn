@@ -194,7 +194,7 @@ def train_model_thread(width, results_list):
 
 
 # List of widths to iterate over
-widths = range(5, 50, 15)
+widths = range(5, 50,)
 results = []
 threads = []
 
