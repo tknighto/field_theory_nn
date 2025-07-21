@@ -32,7 +32,7 @@ y_train = true_function(x_train)
 
 def train_model(width):
     # === Check for GPU and set device ===
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     print(f"Using device: {device}")
 
     # === Configurable parameters ===
