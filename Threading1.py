@@ -6,6 +6,9 @@ import matplotlib.pyplot as pl
 from scipy.special import legendre
 import time
 import os
+import multiprocessing as mp
+
+print(mp.cpu_count())
 
 # Set seed for reproducibility
 torch.manual_seed(42)
@@ -34,6 +37,7 @@ def train_model(width):
     # === Check for GPU and set device ===
     device = torch.device("cpu")
     print(f"Using device: {device}")
+    print(mp.cpu_count())
 
     # === Configurable parameters ===
 
