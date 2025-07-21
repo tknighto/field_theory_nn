@@ -20,8 +20,10 @@ def train_model_mp(width):
     # For this specific case, train_model is defined globally in the first cell,
     # so it should be accessible by the child processes.
     # Also, ensure the device is set correctly within the child process
-    device = torch.device("cuda" if torch.cuda.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     print(f"Using device: {device} in child process for width {width}") # Added print
+    import multiprocessing as mp
+    print(mp.cpu_count())
 
     mean, std = train_model(width)
     return mean, std, width
