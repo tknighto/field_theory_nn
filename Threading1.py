@@ -169,7 +169,6 @@ def train_model(width):
 import threading
 import numpy as np
 import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
-from tqdm.notebook import tqdm # Import tqdm for progress bar
 import os
 
 # Define a lock for thread-safe appending to lists (since lists are shared)
@@ -202,13 +201,13 @@ threads = []
 print("Starting threaded execution...")
 
 # Create and start threads
-for width in tqdm(widths):
+for width in widths:
     thread = threading.Thread(target=train_model_thread, args=(width, results))
     threads.append(thread)
     thread.start()
 
 # Wait for all threads to complete
-for thread in tqdm(threads, desc="Waiting for threads"):
+for thread in threads:
     thread.join()
 
 print("Threaded execution finished.")
