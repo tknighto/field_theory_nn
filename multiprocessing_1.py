@@ -38,7 +38,7 @@ print("Starting parallel execution with multiprocessing...")
 # Using 'spawn' method explicitly when creating the Pool (optional, but can be clearer)
 with mp.Pool(processes=mp.cpu_count()) as pool:
     # Use imap_unordered for potentially better memory usage and progress reporting
-    results = list(pool.imap_unordered(train_model_mp, widths), widths)
+    results = list(pool.imap_unordered(train_model_mp, widths))
 
 print("Parallel execution finished.")
 
