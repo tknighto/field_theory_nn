@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
 import torch # Import torch to check CUDA availability
 import os
-from Threading1 import train_model 
+from Train_model import train_model 
 
 # Set the start method for multiprocessing to 'spawn'
 # This is necessary to use CUDA with multiprocessing on systems that default to 'fork'
