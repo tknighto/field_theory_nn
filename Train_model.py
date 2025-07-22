@@ -7,6 +7,7 @@ from scipy.special import legendre
 import time
 import os
 import multiprocessing as mp
+# import tempfile # Import tempfile
 
 print(mp.cpu_count())
 
@@ -15,7 +16,7 @@ torch.manual_seed(42)
 
 # === Configurable parameters ===
 ENSEMBLE_SIZE = 10       # Number of networks in ensemble
-NUM_EPOCHS = 5000
+NUM_EPOCHS = 500
 LEARNING_RATE = 0.03
 NUM_LAYERS = 1           # Number of hidden layers
 
@@ -43,6 +44,9 @@ def train_model(width):
 
     NEURONS_PER_LAYER = width   # Neurons per hidden layer
 
+    # Create a directory for the current width
+    plot_dir = f"plots/width_{width}"
+    os.makedirs(plot_dir, exist_ok=True)
 
 
     # === Define a customizable feedforward network ===
@@ -138,8 +142,11 @@ def train_model(width):
     pl.xlabel("Epoch")
     pl.ylabel("MSE")
     pl.grid(True)
-    pl.savefig(f"training_loss_width_{width}.png")
+    loss_plot_path = os.path.join(plot_dir, f"training_loss_width_{width}.png")
+    pl.savefig(loss_plot_path)
     pl.close()
+    # # Upload loss plot to Google Drive
+    # upload_file_to_drive(loss_plot_path, folder_id='your_google_drive_folder_id') # Add your folder_id here if needed: folder_id='your_folder_id'
 
 
     ensemble_outputs = np.stack(ensemble_outputs, axis=0)  # shape: (ensemble, samples, 1)
@@ -163,10 +170,22 @@ def train_model(width):
     pl.xlabel("x")
     pl.ylabel("f(x)")
     pl.grid(True)
-    pl.savefig(f"ensemble_plot_width_{width}.png")
+    ensemble_plot_path = os.path.join(plot_dir, f"ensemble_plot_width_{width}.png")
+    pl.savefig(ensemble_plot_path)
     pl.close()
+    # # Upload ensemble plot to Google Drive
+    # upload_file_to_drive(ensemble_plot_path, folder_id='your_google_drive_folder_id') # Add your folder_id here if needed: folder_id='your_folder_id'
+
     # Plot losses after training
     loss = np.mean(losses1)
 
     std_loss = np.std(losses1)
+
+    # # Clean up temporary directory
+    # os.remove(loss_plot_path)
+    # os.remove(ensemble_plot_path)
+    # os.rmdir(plot_dir)
+    # os.rmdir(temp_dir)
+
+
     return loss, std_loss
