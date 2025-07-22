@@ -3,6 +3,7 @@ import threading
 import numpy as np
 import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
 import os
+from Train_model import train_model
 
 # Define a lock for thread-safe appending to lists (since lists are shared)
 results_lock = threading.Lock()
@@ -27,7 +28,7 @@ def train_model_thread(width, results_list):
 
 
 # List of widths to iterate over
-widths = range(5, 50)
+widths = range(5, 50, 15)
 results = []
 threads = []
 
