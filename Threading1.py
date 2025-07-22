@@ -2,6 +2,7 @@ import threading
 import numpy as np
 import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
 import os
+from Train_model import train_model
 # import tempfile # Import tempfile
 
 # Define a lock for thread-safe appending to lists (since lists are shared)
