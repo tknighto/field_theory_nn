@@ -2,7 +2,7 @@ import threading
 import numpy as np
 import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
 import os
-from Train_model import train_model
+from Train_model_gpu import train_model
 # import tempfile # Import tempfile
 
 # Define a lock for thread-safe appending to lists (since lists are shared)
@@ -28,7 +28,7 @@ def train_model_thread(width, results_list):
 
 
 # List of widths to iterate over
-widths = range(5, 50, 10) # Adjust the step as needed
+widths = range(5, 50, 10)
 results = []
 threads = []
 
