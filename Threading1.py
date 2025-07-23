@@ -28,7 +28,7 @@ def train_model_thread(width, results_list):
 
 
 # List of widths to iterate over
-widths = range(5, 50, 20)
+widths = range(5, 50, 10) # Adjust the step as needed
 results = []
 threads = []
 
