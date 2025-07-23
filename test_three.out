@@ -1,0 +1,80 @@
+64
+64
+Starting threaded execution...
+Starting training for width: 5 in thread.
+Using device: cpu
+64
+Starting training for width: 25 in thread.
+Using device: cpu
+64
+Starting training for width: 45 in thread.
+Using device: cpu
+64
+Training network 1/10
+Training network 1/10
+Training network 1/10
+Training time for network 1: 5.22 seconds
+Training network 2/10
+Training time for network 1: 5.25 seconds
+Training network 2/10
+Training time for network 1: 5.26 seconds
+Training network 2/10
+Training time for network 2: 0.60 seconds
+Training network 3/10
+Training time for network 2: 0.64 seconds
+Training network 3/10
+Training time for network 2: 0.67 seconds
+Training network 3/10
+Training time for network 3: 0.65 seconds
+Training network 4/10
+Training time for network 3: 0.72 seconds
+Training network 4/10
+Training time for network 3: 0.71 seconds
+Training network 4/10
+Training time for network 4: 0.66 seconds
+Training network 5/10
+Training time for network 4: 0.70 seconds
+Training network 5/10
+Training time for network 4: 0.72 seconds
+Training network 5/10
+Training time for network 5: 0.64 seconds
+Training network 6/10
+Training time for network 5: 0.70 seconds
+Training network 6/10
+Training time for network 5: 0.74 seconds
+Training network 6/10
+Training time for network 6: 0.65 seconds
+Training network 7/10
+Training time for network 6: 0.70 seconds
+Training network 7/10
+Training time for network 6: 0.72 seconds
+Training network 7/10
+Training time for network 7: 0.65 seconds
+Training network 8/10
+Training time for network 7: 0.70 seconds
+Training network 8/10
+Training time for network 7: 0.70 seconds
+Training network 8/10
+Training time for network 8: 0.65 seconds
+Training network 9/10
+Training time for network 8: 0.71 seconds
+Training network 9/10
+Training time for network 8: 0.72 seconds
+Training network 9/10
+Training time for network 9: 0.65 seconds
+Training network 10/10
+Training time for network 9: 0.72 seconds
+Training network 10/10
+Training time for network 9: 0.71 seconds
+Training network 10/10
+Training time for network 10: 0.66 seconds
+Finished training for width: 5 in thread.
+Training time for network 10: 0.75 seconds
+Training time for network 10: 0.73 seconds
+Finished training for width: 25 in thread.
+Finished training for width: 45 in thread.
+Threaded execution finished.
+Processing results and plotting...
+Plotting finished.
+64
+python3: can't open file '/home/s2763121/field_theory_nn/Treading1.py': [Errno 2] No such file or directory
