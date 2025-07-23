@@ -1,0 +1,126 @@
+file 64
+64
+Starting threaded execution...
+Starting training for width: 5 in thread.
+Using device: cpu
+64
+Starting training for width: 15 in thread.
+Using device: cpu
+64
+Starting training for width: 25 in thread.
+Using device: cpu
+64
+Starting training for width: 35 in thread.
+Using device: cpu
+64
+Starting training for width: 45 in thread.
+Using device: cpu
+64
+Training network 1/10
+Training network 1/10
+Training network 1/10
+Training network 1/10
+Training network 1/10
+Training time for network 1: 5.62 seconds
+Training network 2/10
+Training time for network 1: 5.70 seconds
+Training network 2/10
+Training time for network 1: 5.71 seconds
+Training network 2/10
+Training time for network 1: 5.76 seconds
+Training network 2/10
+Training time for network 1: 5.81 seconds
+Training network 2/10
+Training time for network 2: 0.91 seconds
+Training network 3/10
+Training time for network 2: 0.90 seconds
+Training network 3/10
+Training time for network 2: 0.99 seconds
+Training network 3/10
+Training time for network 2: 0.92 seconds
+Training network 3/10
+Training time for network 2: 1.02 seconds
+Training network 3/10
+Training time for network 3: 0.90 seconds
+Training network 4/10
+Training time for network 3: 1.00 seconds
+Training network 4/10
+Training time for network 3: 0.87 seconds
+Training network 4/10
+Training time for network 3: 0.94 seconds
+Training network 4/10
+Training time for network 3: 1.00 seconds
+Training network 4/10
+Training time for network 4: 0.94 seconds
+Training network 5/10
+Training time for network 4: 0.87 seconds
+Training network 5/10
+Training time for network 4: 0.88 seconds
+Training network 5/10
+Training time for network 4: 0.94 seconds
+Training network 5/10
+Training time for network 4: 0.97 seconds
+Training network 5/10
+Training time for network 5: 0.89 seconds
+Training network 6/10
+Training time for network 5: 0.87 seconds
+Training network 6/10
+Training time for network 5: 0.90 seconds
+Training network 6/10
+Training time for network 5: 0.95 seconds
+Training network 6/10
+Training time for network 5: 0.97 seconds
+Training network 6/10
+Training time for network 6: 0.85 seconds
+Training network 7/10
+Training time for network 6: 0.98 seconds
+Training network 7/10
+Training time for network 6: 0.90 seconds
+Training network 7/10
+Training time for network 6: 0.96 seconds
+Training network 7/10
+Training time for network 6: 0.98 seconds
+Training network 7/10
+Training time for network 7: 0.88 seconds
+Training network 8/10
+Training time for network 7: 0.91 seconds
+Training network 8/10
+Training time for network 7: 0.88 seconds
+Training network 8/10
+Training time for network 7: 0.91 seconds
+Training network 8/10
+Training time for network 7: 0.92 seconds
+Training network 8/10
+Training time for network 8: 0.86 seconds
+Training network 9/10
+Training time for network 8: 0.93 seconds
+Training network 9/10
+Training time for network 8: 0.92 seconds
+Training network 9/10
+Training time for network 8: 0.96 seconds
+Training network 9/10
+Training time for network 8: 0.91 seconds
+Training network 9/10
+Training time for network 9: 0.91 seconds
+Training network 10/10
+Training time for network 9: 0.86 seconds
+Training network 10/10
+Training time for network 9: 0.87 seconds
+Training network 10/10
+Training time for network 9: 0.91 seconds
+Training network 10/10
+Training time for network 9: 0.92 seconds
+Training network 10/10
+Training time for network 10: 0.95 seconds
+Training time for network 10: 0.93 seconds
+Training time for network 10: 1.14 seconds
+Finished training for width: 25 in thread.
+Training time for network 10: 1.13 seconds
+Finished training for width: 45 in thread.
+Training time for network 10: 1.35 seconds
+Finished training for width: 35 in thread.
+Finished training for width: 15 in thread.
+Finished training for width: 5 in thread.
+Threaded execution finished.
+Processing results and plotting...
+Plotting finished.
