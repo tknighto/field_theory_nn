@@ -9,7 +9,7 @@ import os
 import multiprocessing as mp
 # import tempfile # Import tempfile
 
-print(mp.cpu_count())
+print("Number of GPUs available:", torch.cuda.device_count())
 
 # Set seed for reproducibility
 torch.manual_seed(42)
@@ -38,7 +38,7 @@ def train_model(width):
     # === Check for GPU and set device ===
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    print(mp.cpu_count())
+    print("Number of GPUs available:", torch.cuda.device_count())
 
     # === Configurable parameters ===
 
