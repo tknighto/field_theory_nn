@@ -29,7 +29,7 @@ def train_model(width):
     print(mp.cpu_count())
 
     # === Configurable parameters ===
-    NUM_EPOCHS = 100*width
+    NUM_EPOCHS = 100000*width
     LEARNING_RATE = 0.15/width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
