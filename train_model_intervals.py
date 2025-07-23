@@ -7,6 +7,8 @@ from scipy.special import legendre
 import time
 import os
 import multiprocessing as mp
+ENSEMBLE_SIZE = 10       # Number of networks in ensemble
+NUM_LAYERS = 1           # Number of hidden layers
 
 def train_model(width):
     # === Check for GPU and set device ===
