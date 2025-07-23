@@ -8,7 +8,8 @@ import numpy as np
 import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
 import os
 from scipy.special import legendre # Import legendre for true_function
-from Train_model_intervals import train_model
+from train_model_intervals import train_model
+
 # import tempfile # Import tempfile
 
 # Redefine necessary global variables from the first cell
