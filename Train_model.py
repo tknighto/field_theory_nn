@@ -16,7 +16,7 @@ torch.manual_seed(42)
 
 # === Configurable parameters ===
 ENSEMBLE_SIZE = 10       # Number of networks in ensemble
-NUM_EPOCHS = 500000
+NUM_EPOCHS = 500 # Number of training epochs
 LEARNING_RATE = 0.03
 NUM_LAYERS = 1           # Number of hidden layers
 
