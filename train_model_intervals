@@ -1,3 +1,13 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as pl
+from scipy.special import legendre
+import time
+import os
+import multiprocessing as mp
+
 def train_model(width):
     # === Check for GPU and set device ===
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
