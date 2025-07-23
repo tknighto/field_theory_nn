@@ -7,8 +7,20 @@ from scipy.special import legendre
 import time
 import os
 import multiprocessing as mp
+
 ENSEMBLE_SIZE = 10       # Number of networks in ensemble
 NUM_LAYERS = 1           # Number of hidden layers
+
+# === Define a simple dataset ===
+def true_function(x):
+    P = legendre(4)  # 4th-degree Legendre polynomial, change as needed
+    x_np = x.numpy().squeeze()  # Convert to NumPy for scipy
+    y_np = P(x_np)              # Evaluate polynomial
+    return torch.tensor(y_np, dtype=torch.float32).unsqueeze(1)
+
+
+x_train = torch.linspace(-1, 1, 20).unsqueeze(1)  # shape: (100, 1)
+y_train = true_function(x_train)
 
 def train_model(width):
     # === Check for GPU and set device ===
