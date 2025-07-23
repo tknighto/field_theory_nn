@@ -1,0 +1,200 @@
+def train_model(width):
+    # === Check for GPU and set device ===
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    print(mp.cpu_count())
+
+    # === Configurable parameters ===
+    NUM_EPOCHS = 100*width
+    LEARNING_RATE = 0.15/width
+    print(f"Number of epochs: {NUM_EPOCHS}")
+    print(f"Learning rate: {LEARNING_RATE}")
+
+    NEURONS_PER_LAYER = width   # Neurons per hidden layer
+
+    # Create a directory for the current width
+    plot_dir = f"plots/width_{width}"
+    os.makedirs(plot_dir, exist_ok=True)
+
+
+    # === Define a customizable feedforward network ===
+    class SimpleNet(nn.Module):
+        def __init__(self, num_layers, neurons_per_layer):
+            super(SimpleNet, self).__init__()
+            layers = []
+
+            input_dim = 1
+            for _ in range(num_layers):
+                layer = nn.Linear(input_dim, neurons_per_layer)
+                # Scale the standard deviation of weights by 1/width, biases remain with std=1.0
+                nn.init.normal_(layer.weight, mean=0.0, std=1.0/width)  # Gaussian weight init
+                nn.init.normal_(layer.bias, mean=0.0, std=1.0)    # Gaussian bias init
+                layers.append(layer)
+                layers.append(nn.Tanh())  # activation
+                input_dim = neurons_per_layer
+
+            # Output layer
+            final_layer = nn.Linear(input_dim, 1)
+            nn.init.normal_(final_layer.weight, mean=0.0, std=1.0/width)
+            nn.init.normal_(final_layer.bias, mean=0.0, std=1.0)
+            layers.append(final_layer)
+
+            self.net = nn.Sequential(*layers)
+
+        def forward(self, x):
+            return self.net(x)
+
+
+
+
+    # === Train a single network ===
+
+    # trained_loss = [] # This list is not used, can be removed
+    # losses = [] # This list is not used in train_model after train_network modification
+    losses1 = []
+
+    def train_network(model, x_train, y_train, learning_rate, num_epochs):
+        criterion = nn.MSELoss()
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.0)
+
+        # Move model and criterion to the device
+        model.to(device)
+        criterion.to(device)
+
+        # Move data to the device
+        x_train_device = x_train.to(device)
+        y_train_device = y_train.to(device)
+
+
+        model.train()  # Set model to training mode
+
+        # Initialize list to store loss values at intervals
+        interval_losses = []
+
+        # Initialize list to store all losses for the epoch plot within this function call
+        epoch_losses = []
+
+
+        # Determine total number of epochs
+        total_epochs = num_epochs
+
+        # Calculate epoch indices for recording
+        record_epochs = [
+            0, # Initial epoch
+            total_epochs // 4,
+            total_epochs // 2,
+            total_epochs * 3 // 4,
+            total_epochs - 1 # Final epoch
+        ]
+        # Ensure unique and sorted indices
+        record_epochs = sorted(list(set([max(0, min(total_epochs - 1, ep)) for ep in record_epochs])))
+
+
+        for epoch in range(total_epochs):
+            optimizer.zero_grad()
+            # Use data on the device
+            output = model(x_train_device)
+            loss = criterion(output, y_train_device)
+            loss.backward()
+            optimizer.step()
+            epoch_losses.append(loss.item())
+
+
+            # Check if current epoch is in record_epochs
+            if epoch in record_epochs:
+                # Append loss to interval_losses
+                interval_losses.append(loss.item())
+
+
+            # Optional: print loss every 10000 epochs
+            if (epoch + 1) % 10000 == 0:
+                print(f"Epoch {epoch+1}/{total_epochs}, Loss: {loss.item():.4f}")
+
+        # Return trained model, interval_losses, and epoch_losses
+        return model, interval_losses, epoch_losses
+
+
+    # === Train ensemble of networks ===
+    ensemble_outputs = []
+    ensemble_interval_losses = [] # List to store interval losses for each network
+    ensemble_epoch_losses = [] # List to store epoch losses for each network
+
+
+    for i in range(ENSEMBLE_SIZE):
+        print(f"Training network {i+1}/{ENSEMBLE_SIZE}")
+        start_time = time.time()
+        model = SimpleNet(NUM_LAYERS, NEURONS_PER_LAYER)
+        # Receive interval_losses and epoch_losses from train_network
+        trained_model, interval_losses, epoch_losses = train_network(model, x_train, y_train, LEARNING_RATE, NUM_EPOCHS)
+
+        # Append interval_losses and epoch_losses to the ensemble lists
+        ensemble_interval_losses.append(interval_losses)
+        ensemble_epoch_losses.append(epoch_losses)
+
+
+        with torch.no_grad():
+            # Move output back to CPU for numpy conversion if needed for plotting later
+            output = trained_model(x_train.to(device)).cpu()
+            ensemble_outputs.append(output.numpy())
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Training time for network {i+1}: {elapsed_time:.2f} seconds")
+
+# Plotting loss curve for the last trained network in the ensemble
+    if ensemble_epoch_losses:
+        pl.figure()
+        # Plot the epoch losses from the last network trained
+        pl.plot(ensemble_epoch_losses[-1])
+        pl.title(f"Training Loss (Width: {width})")
+        pl.xlabel("Epoch")
+        pl.ylabel("MSE")
+        pl.grid(True)
+        loss_plot_path = os.path.join(plot_dir, f"training_loss_width_{width}.png")
+        pl.savefig(loss_plot_path)
+        pl.close()
+
+
+    ensemble_outputs = np.stack(ensemble_outputs, axis=0)  # shape: (ensemble, samples, 1)
+
+    # === Compute statistics across ensemble ===
+    mean_output = np.mean(ensemble_outputs, axis=0).squeeze()
+    std_output = np.std(ensemble_outputs, axis=0).squeeze()
+
+    # === Calculate mean and std dev of interval losses ===
+    # Convert list of lists to a NumPy array
+    ensemble_interval_losses_np = np.array(ensemble_interval_losses)
+    # Calculate mean and std along axis 0 (across the ensemble)
+    mean_interval_losses = np.mean(ensemble_interval_losses_np, axis=0)
+    std_interval_losses = np.std(ensemble_interval_losses_np, axis=0)
+
+
+    # === Plot ===
+    x_np = x_train.numpy().squeeze()
+    y_np = y_train.numpy().squeeze()
+
+    pl.figure(figsize=(10, 6))
+    pl.plot(x_np, y_np, label="True Function", color="black")
+    pl.plot(x_np, mean_output, label="Ensemble Mean", color="blue")
+    pl.fill_between(x_np, mean_output - std_output, mean_output + std_output, color='blue', alpha=0.3, label="Std Dev")
+    for i in range(ENSEMBLE_SIZE):
+        pl.plot(x_np, ensemble_outputs[i].squeeze(), alpha=0.2, color='gray')
+    pl.legend()
+    pl.title(f"Ensemble of Neural Networks Learning P4 (Width: {width})")
+    pl.xlabel("x")
+    pl.ylabel("f(x)")
+    pl.grid(True)
+    ensemble_plot_path = os.path.join(plot_dir, f"ensemble_plot_width_{width}.png")
+    pl.savefig(ensemble_plot_path)
+    pl.close()
+
+
+    # Plot losses after training
+    # Calculate the final loss and its standard deviation across the ensemble
+    final_losses = [loss[-1] for loss in ensemble_epoch_losses] # Get the last loss from each network
+    loss = np.mean(final_losses)
+    std_loss = np.std(final_losses)
+
+
+    # Return mean and std dev of interval losses, plus final mean/std loss
+    return mean_interval_losses, std_interval_losses, loss, std_loss

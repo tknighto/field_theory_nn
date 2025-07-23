@@ -1,0 +1,129 @@
+import torch.optim as optim
+import time
+import torch.nn as nn
+import multiprocessing as mp
+import torch
+import threading
+import numpy as np
+import matplotlib.pyplot as pl # Assuming pl is matplotlib.pyplot
+import os
+from scipy.special import legendre # Import legendre for true_function
+from Train_model_intervals import train_model
+# import tempfile # Import tempfile
+
+# Redefine necessary global variables from the first cell
+ENSEMBLE_SIZE = 10       # Number of networks in ensemble
+NUM_LAYERS = 1           # Number of hidden layers
+
+# Redefine the true function and data
+def true_function(x):
+    P = legendre(4)  # 4th-degree Legendre polynomial, change as needed
+    x_np = x.numpy().squeeze()  # Convert to NumPy for scipy
+    y_np = P(x_np)              # Evaluate polynomial
+    return torch.tensor(y_np, dtype=torch.float32).unsqueeze(1)
+
+x_train = torch.linspace(-1, 1, 20).unsqueeze(1)  # shape: (100, 1)
+y_train = true_function(x_train)
+
+
+# Define a lock for thread-safe appending to lists (since lists are shared)
+results_lock = threading.Lock()
+
+# Define the function to be threaded (same as before)
+def train_model_thread(width, results_list):
+    # Ensure necessary imports are within the function if train_model relies on them
+    # For this specific case, train_model is defined globally in the first cell,
+    # so it should be accessible by the threads.
+    print(f"Starting training for width: {width} in thread.") # Added print
+    try:
+        # train_model now returns mean_interval_losses, std_interval_losses, final_loss, final_std_loss
+        mean_interval, std_interval, final_mean, final_std = train_model(width)
+        print(f"Finished training for width: {width} in thread.") # Added print
+        # Use the lock when appending to the shared list
+        with results_lock:
+            # Store all returned values along with the width
+            results_list.append((mean_interval, std_interval, final_mean, final_std, width))
+    except Exception as e:
+        print(f"Error training for width {width}: {e}")
+        # Append an error marker or handle as needed
+        with results_lock:
+            results_list.append((None, None, None, None, width))
+
+
+# List of widths to iterate over
+widths = range(5, 50, 20)
+results = [] # This list will store (mean_interval, std_interval, final_mean, final_std, width)
+threads = []
+
+print("Starting threaded execution...")
+
+# Create and start threads
+for width in widths:
+    thread = threading.Thread(target=train_model_thread, args=(width, results))
+    threads.append(thread)
+    thread.start()
+
+# Wait for all threads to complete
+for thread in threads:
+    thread.join()
+
+print("Threaded execution finished.")
+
+# Process the results - This part will be modified in the next step to handle interval data
+# Filter out any potential None results if errors occurred
+valid_results = [r for r in results if r[0] is not None]
+
+# Sort results based on width
+valid_results.sort(key=lambda x: x[4])
+
+# Extract final losses for the final plot (optional, as we will plot intervals)
+# This part might be removed or modified depending on whether a final loss plot is still desired
+# loss_tot = [r[2] for r in valid_results] # Final mean loss
+# loss_std = [r[3] for r in valid_results] # Final std loss
+# neurons = [1/r[4] for r in valid_results] # 1/width
+
+# Now, collect and process the interval losses
+# We need to aggregate interval losses across all widths
+# Assuming all runs had the same number of intervals (which they should)
+if valid_results:
+    num_intervals = len(valid_results[0][0]) # Number of intervals based on the first result
+    print(f"Number of recorded intervals: {num_intervals}")
+
+    # Initialize lists to store mean and std dev for each interval across all widths
+    # Each element in these lists will be a list of means/stds for a specific interval across all widths
+    interval_means_across_widths = [[] for _ in range(num_intervals)]
+    interval_stds_across_widths = [[] for _ in range(num_intervals)]
+    inverse_widths = [] # Store 1/width values
+
+    for mean_interval, std_interval, final_mean, final_std, width in valid_results:
+        inverse_widths.append(1 / width)
+        for i in range(num_intervals):
+            interval_means_across_widths[i].append(mean_interval[i])
+            interval_stds_across_widths[i].append(std_interval[i])
+
+    print("Finished collecting interval losses across widths.")
+
+    # Now, plot the results for each interval
+    final_plot_dir = "plots/final_plots"
+    os.makedirs(final_plot_dir, exist_ok=True)
+
+    interval_labels = ["0%", "25%", "50%", "75%", "100%"] # Labels for intervals
+
+    for i in range(num_intervals):
+        pl.figure()
+        pl.plot(inverse_widths, interval_means_across_widths[i], label="Mean Loss", color="blue")
+        interval_means_np = np.array(interval_means_across_widths[i])
+        interval_stds_np = np.array(interval_stds_across_widths[i])
+        pl.fill_between(inverse_widths, interval_means_np - interval_stds_np, interval_means_np + interval_stds_np, alpha=0.3, color="blue", label="±1 Std Dev")
+        pl.title(f"Loss vs 1/Width at {interval_labels[i]} Training")
+        pl.xlabel("1 / width")
+        pl.ylabel("Loss")
+        pl.grid(True)
+        pl.legend()
+        final_plot_path = os.path.join(final_plot_dir, f"loss_vs_inverse_width_interval_{i+1}.png")
+        pl.savefig(final_plot_path)
+        pl.close()
+        print(f"Plotting finished for interval {i+1}.")
+
+else:
+    print("No valid results to plot.")
