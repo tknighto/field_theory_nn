@@ -198,3 +198,4 @@ def train_model(width):
 
     # Return mean and std dev of interval losses, plus final mean/std loss
     return mean_interval_losses, std_interval_losses, loss, std_loss
+print("Finished importing train_model function.")
