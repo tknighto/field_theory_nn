@@ -53,9 +53,9 @@ def train_model(width):
     print(mp.cpu_count())
 
     # === Configurable parameters ===
-    NUM_EPOCHS = 10000*width
+    NUM_EPOCHS = 100000*width
     LEARNING_RATE = 0.5/width
-    PATIENCE = 200000 # Number of epochs to wait for improvement before stopping
+    PATIENCE = 2000000 # Number of epochs to wait for improvement before stopping
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
     print(f"Patience for early stopping: {PATIENCE}")
