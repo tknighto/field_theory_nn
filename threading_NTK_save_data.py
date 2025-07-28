@@ -277,7 +277,7 @@ def train_model(width):
     print(f"Using device: {device}")
     print(mp.cpu_count())
 
-    NUM_EPOCHS = 1000* width
+    NUM_EPOCHS = 100000* width
     LEARNING_RATE = 0.15 / width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
