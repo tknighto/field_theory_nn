@@ -113,16 +113,39 @@ os.makedirs(plot_dir_analysis, exist_ok=True)
 # Data structure in loaded_data: [{'mean_1000_epoch_losses': ..., 'std_1000_epoch_losses': ..., 'mean_1000_epoch_test_losses': ..., 'std_1000_epoch_test_losses': ..., 'width': ..., 'epochs_recorded_at': [...]}, ...]
 
 if loaded_data: # Check if loaded_data is not empty
-    # Determine the number of intervals from the first loaded data entry
-    # Ensure all data entries have the same number of recorded epochs for intervals
-    num_intervals_plotting = len(loaded_data[0]['mean_1000_epoch_losses']) # Using 1000-epoch losses for interval count
-    interval_labels = ["0%", "25%", "50%", "75%", "100%"] # These labels are conceptual and might not map directly to 1000-epoch intervals, but we'll use them as before
 
+    # Define the desired number of intervals and their conceptual labels
+    desired_num_intervals = 5
+    interval_labels = ["0%", "25%", "50%", "75%", "100%"]
 
     pl.figure(figsize=(12, 8))
 
-    # Iterate through each interval (assuming all widths have losses recorded at the same set of 1000-epoch intervals)
-    for i in range(num_intervals_plotting):
+    # Calculate the indices for the desired intervals for each width
+    interval_indices_across_widths = []
+    for data in loaded_data:
+        total_1000_epoch_points = len(data['mean_1000_epoch_losses'])
+        # Calculate indices for 5 equally spaced points (including start and end)
+        indices = np.linspace(0, total_1000_epoch_points - 1, desired_num_intervals).astype(int)
+        interval_indices_across_widths.append(indices)
+
+    # Ensure all widths have at least the desired number of intervals worth of data recorded
+    # (This check is simplified; a more robust check might be needed for sparse recording)
+    min_recorded_intervals = min([len(data['mean_1000_epoch_losses']) for data in loaded_data])
+    if min_recorded_intervals < desired_num_intervals:
+        print(f"Warning: Not all widths have at least {desired_num_intervals} recorded intervals. Plotting based on the minimum available.")
+        # Recalculate indices based on the minimum available intervals
+        desired_num_intervals = min_recorded_intervals
+        interval_labels = [f"Interval {i+1}" for i in range(desired_num_intervals)] # Generic labels
+        interval_indices_across_widths = []
+        for data in loaded_data:
+             total_1000_epoch_points = len(data['mean_1000_epoch_losses'])
+             indices = np.linspace(0, total_1000_epoch_points - 1, desired_num_intervals).astype(int)
+             interval_indices_across_widths.append(indices)
+
+
+
+    # Iterate through each desired interval index
+    for i in range(desired_num_intervals):
         inverse_widths = []
         mean_train_losses_at_interval = []
         std_train_losses_at_interval = []
@@ -130,15 +153,19 @@ if loaded_data: # Check if loaded_data is not empty
         std_test_losses_at_interval = []
 
         # Collect data for the current interval across all widths from loaded_data
-        for data in loaded_data:
+        for width_idx, data in enumerate(loaded_data):
             width = data['width']
             inverse_widths.append(1 / width)
 
-            # Get the mean and std losses at the current interval index (i)
-            mean_train_losses_at_interval.append(data['mean_1000_epoch_losses'][i])
-            std_train_losses_at_interval.append(data['std_1000_epoch_losses'][i])
-            mean_test_losses_at_interval.append(data['mean_1000_epoch_test_losses'][i])
-            std_test_losses_at_interval.append(data['std_1000_epoch_test_losses'][i])
+            # Get the index for the current interval for this specific width
+            current_interval_index = interval_indices_across_widths[width_idx][i]
+
+
+            # Get the mean and std losses at the current interval index
+            mean_train_losses_at_interval.append(data['mean_1000_epoch_losses'][current_interval_index])
+            std_train_losses_at_interval.append(data['std_1000_epoch_losses'][current_interval_index])
+            mean_test_losses_at_interval.append(data['mean_1000_epoch_test_losses'][current_interval_index])
+            std_test_losses_at_interval.append(data['std_1000_epoch_test_losses'][current_interval_index])
 
 
         # At this point, we should have consistent lengths for all lists for this interval
@@ -150,18 +177,18 @@ if loaded_data: # Check if loaded_data is not empty
         plottable_std_test = np.array(std_test_losses_at_interval)
 
 
-        pl.errorbar(plottable_inverse_widths, plottable_mean_train, yerr=plottable_std_train, fmt='o-', label=f"Train Loss (Interval {i+1})") # Using interval number for clarity
-        pl.errorbar(plottable_inverse_widths, plottable_mean_test, yerr=plottable_std_test, fmt='s--', label=f"Test Loss (Interval {i+1})")
+        pl.errorbar(plottable_inverse_widths, plottable_mean_train, yerr=plottable_std_train, fmt='o-', label=f"Train Loss ({interval_labels[i]})")
+        pl.errorbar(plottable_inverse_widths, plottable_mean_test, yerr=plottable_std_test, fmt='s--', label=f"Test Loss ({interval_labels[i]})")
 
 
-    pl.title("Mean Training and Test Loss vs 1/Width at Different Training Stages")
+    pl.title(f"Mean Training and Test Loss vs 1/Width at {desired_num_intervals} Equally Spaced Training Stages")
     pl.xlabel("1 / Width")
     pl.ylabel("Mean MSE")
     pl.yscale('log')
     pl.grid(True)
     pl.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     pl.tight_layout()
-    final_combined_loss_plot_path = os.path.join(plot_dir_analysis, "combined_loss_vs_inverse_width_intervals.png")
+    final_combined_loss_plot_path = os.path.join(plot_dir_analysis, "combined_loss_vs_inverse_width_fixed_intervals.png")
     pl.savefig(final_combined_loss_plot_path)
     pl.close()
     print(f"Saved combined training and test loss vs inverse width plot to {final_combined_loss_plot_path}")
