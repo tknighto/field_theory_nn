@@ -100,3 +100,84 @@ final_loss_plot_path = os.path.join(plot_dir_analysis, "final_loss_vs_inverse_wi
 pl.savefig(final_loss_plot_path)
 pl.close()
 print(f"Saved final loss vs inverse width plot to {final_loss_plot_path}")
+
+import os
+import matplotlib.pyplot as pl
+import numpy as np
+
+
+# Plotting training and test loss vs 1/width at 5 equally spaced training times
+plot_dir_analysis = "plots/analysis_plots"
+os.makedirs(plot_dir_analysis, exist_ok=True)
+
+# Assuming valid_results contains the data from train_model_thread
+# Data structure: (mean_interval, std_interval, final_mean, final_std, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, width)
+
+if valid_results:
+    num_intervals_plotting = len(valid_results[0][0]) # Number of recorded intervals
+    interval_labels = ["0%", "25%", "50%", "75%", "100%"]
+
+    pl.figure(figsize=(12, 8))
+
+    for i in range(num_intervals_plotting):
+        inverse_widths = []
+        mean_train_losses_at_interval = []
+        std_train_losses_at_interval = []
+        mean_test_losses_at_interval = []
+        std_test_losses_at_interval = []
+
+        for mean_interval, std_interval, final_mean, final_std, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, width in valid_results:
+            inverse_widths.append(1 / width)
+            mean_train_losses_at_interval.append(mean_interval[i])
+            std_train_losses_at_interval.append(std_interval[i])
+
+            # Access the correct index for test interval losses
+            # We are looking for the test loss at the epoch corresponding to the training interval
+            epoch_at_interval = valid_results[0][7][i] # Assuming epochs_recorded_at[0] has the epoch numbers for the intervals
+
+            # Find the closest recorded epoch in the 1000-epoch list for the current width
+            current_width_data = [data for data in loaded_data if data['width'] == width][0]
+            current_width_epochs_recorded_at = current_width_data['epochs_recorded_at']
+            closest_epoch_idx = np.argmin(np.abs(np.array(current_width_epochs_recorded_at) - epoch_at_interval))
+
+            mean_test_losses_at_interval.append(mean_1000_epoch_test[closest_epoch_idx])
+            std_test_losses_at_interval.append(std_1000_epoch_test[closest_epoch_idx])
+
+
+        # Filter out None values while maintaining corresponding elements
+        # With the closest epoch logic, we should not have None values here anymore,
+        # but keeping the structure for robustness if needed later.
+        plottable_data = []
+        for j in range(len(inverse_widths)):
+            # Check if data is valid (should be with closest_epoch_idx)
+            if mean_train_losses_at_interval[j] is not None and mean_test_losses_at_interval[j] is not None:
+                 plottable_data.append((inverse_widths[j], mean_train_losses_at_interval[j], std_train_losses_at_interval[j],
+                                       mean_test_losses_at_interval[j], std_test_losses_at_interval[j]))
+
+
+        if plottable_data:
+            plottable_data_np = np.array(plottable_data)
+            plottable_inverse_widths = plottable_data_np[:, 0]
+            plottable_mean_train = plottable_data_np[:, 1]
+            plottable_std_train = plottable_data_np[:, 2]
+            plottable_mean_test = plottable_data_np[:, 3]
+            plottable_std_test = plottable_data_np[:, 4]
+
+
+            pl.errorbar(plottable_inverse_widths, plottable_mean_train, yerr=plottable_std_train, fmt='o-', label=f"Train Loss ({interval_labels[i]})")
+            pl.errorbar(plottable_inverse_widths, plottable_mean_test, yerr=plottable_std_test, fmt='s--', label=f"Test Loss ({interval_labels[i]})")
+
+    pl.title("Mean Training and Test Loss vs 1/Width at Different Training Stages")
+    pl.xlabel("1 / Width")
+    pl.ylabel("Mean MSE")
+    pl.yscale('log')
+    pl.grid(True)
+    pl.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    pl.tight_layout()
+    final_combined_loss_plot_path = os.path.join(plot_dir_analysis, "combined_loss_vs_inverse_width_intervals.png")
+    pl.savefig(final_combined_loss_plot_path)
+    pl.close()
+    print(f"Saved combined training and test loss vs inverse width plot to {final_combined_loss_plot_path}")
+
+else:
+    print("No valid results to plot.")
