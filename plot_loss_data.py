@@ -25,7 +25,8 @@ widths = [data['width'] for data in loaded_data]
 inverse_widths = [1 / width for width in widths]
 mean_train_losses_1000_epochs = [data['mean_1000_epoch_losses'] for data in loaded_data]
 std_train_losses_1000_epochs = [data['std_1000_epoch_losses'] for data in loaded_data]
-
+mean_test_losses_1000_epochs = [data['mean_1000_epoch_test_losses'] for data in loaded_data]
+std_test_losses_1000_epochs = [data['std_1000_epoch_test_losses'] for data in loaded_data]
 epochs_recorded_at = [data['epochs_recorded_at'] for data in loaded_data]
 
 print("Loaded data for widths:", widths)
@@ -40,9 +41,12 @@ for i, width in enumerate(widths):
     pl.fill_between(epochs_recorded_at[i], np.array(mean_train_losses_1000_epochs[i]) - np.array(std_train_losses_1000_epochs[i]),
                     np.array(mean_train_losses_1000_epochs[i]) + np.array(std_train_losses_1000_epochs[i]), alpha=0.3, label="±1 Std Dev (Train)")
 
-    
+    pl.plot(epochs_recorded_at[i], mean_test_losses_1000_epochs[i], label="Mean Test Loss", linestyle='--')
+    pl.fill_between(epochs_recorded_at[i], np.array(mean_test_losses_1000_epochs[i]) - np.array(std_test_losses_1000_epochs[i]),
+                    np.array(mean_test_losses_1000_epochs[i]) + np.array(std_test_losses_1000_epochs[i]), alpha=0.3, label="±1 Std Dev (Test)")
 
-    pl.title(f"Training Loss over Epochs (Width: {width})")
+
+    pl.title(f"Training and Test Loss over Epochs (Width: {width})")
     pl.xlabel("Epoch")
     pl.ylabel("MSE")
     pl.yscale('log')
@@ -79,11 +83,12 @@ print(f"Saved combined loss vs training time plot to {plot_path_combined_time}")
 # Plotting final training and test losses vs inverse width
 final_train_losses = [losses[-1] for losses in mean_train_losses_1000_epochs]
 final_train_stds = [stds[-1] for stds in std_train_losses_1000_epochs]
-
+final_test_losses = [losses[-1] for losses in mean_test_losses_1000_epochs]
+final_test_stds = [stds[-1] for stds in std_test_losses_1000_epochs]
 
 pl.figure(figsize=(10, 6))
 pl.errorbar(inverse_widths, final_train_losses, yerr=final_train_stds, fmt='o-', label="Final Training Loss")
-
+pl.errorbar(inverse_widths, final_test_losses, yerr=final_test_stds, fmt='o-', label="Final Test Loss")
 
 pl.title("Final Training and Test Loss vs 1/Width")
 pl.xlabel("1 / width")
