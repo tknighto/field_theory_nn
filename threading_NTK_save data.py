@@ -98,7 +98,7 @@ def compute_ntk_properties(ntk_matrix):
 
     return frobenius_norm, eigenvalues
 
-import torch.optim as optim
+    import torch.optim as optim
 import time
 import torch.nn as nn
 import multiprocessing as mp
