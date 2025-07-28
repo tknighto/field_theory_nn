@@ -105,20 +105,23 @@ import os
 import matplotlib.pyplot as pl
 import numpy as np
 
-
 # Plotting training and test loss vs 1/width at 5 equally spaced training times
 plot_dir_analysis = "plots/analysis_plots"
 os.makedirs(plot_dir_analysis, exist_ok=True)
 
-# Assuming valid_results contains the data from train_model_thread
-# Data structure: (mean_interval, std_interval, final_mean, final_std, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, width)
+# Assuming loaded_data is populated from the pickle files
+# Data structure in loaded_data: [{'mean_1000_epoch_losses': ..., 'std_1000_epoch_losses': ..., 'mean_1000_epoch_test_losses': ..., 'std_1000_epoch_test_losses': ..., 'width': ..., 'epochs_recorded_at': [...]}, ...]
 
-if valid_results:
-    num_intervals_plotting = len(valid_results[0][0]) # Number of recorded intervals
-    interval_labels = ["0%", "25%", "50%", "75%", "100%"]
+if loaded_data: # Check if loaded_data is not empty
+    # Determine the number of intervals from the first loaded data entry
+    # Ensure all data entries have the same number of recorded epochs for intervals
+    num_intervals_plotting = len(loaded_data[0]['mean_1000_epoch_losses']) # Using 1000-epoch losses for interval count
+    interval_labels = ["0%", "25%", "50%", "75%", "100%"] # These labels are conceptual and might not map directly to 1000-epoch intervals, but we'll use them as before
+
 
     pl.figure(figsize=(12, 8))
 
+    # Iterate through each interval (assuming all widths have losses recorded at the same set of 1000-epoch intervals)
     for i in range(num_intervals_plotting):
         inverse_widths = []
         mean_train_losses_at_interval = []
@@ -126,46 +129,30 @@ if valid_results:
         mean_test_losses_at_interval = []
         std_test_losses_at_interval = []
 
-        for mean_interval, std_interval, final_mean, final_std, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, width in valid_results:
+        # Collect data for the current interval across all widths from loaded_data
+        for data in loaded_data:
+            width = data['width']
             inverse_widths.append(1 / width)
-            mean_train_losses_at_interval.append(mean_interval[i])
-            std_train_losses_at_interval.append(std_interval[i])
 
-            # Access the correct index for test interval losses
-            # We are looking for the test loss at the epoch corresponding to the training interval
-            epoch_at_interval = valid_results[0][7][i] # Assuming epochs_recorded_at[0] has the epoch numbers for the intervals
-
-            # Find the closest recorded epoch in the 1000-epoch list for the current width
-            current_width_data = [data for data in loaded_data if data['width'] == width][0]
-            current_width_epochs_recorded_at = current_width_data['epochs_recorded_at']
-            closest_epoch_idx = np.argmin(np.abs(np.array(current_width_epochs_recorded_at) - epoch_at_interval))
-
-            mean_test_losses_at_interval.append(mean_1000_epoch_test[closest_epoch_idx])
-            std_test_losses_at_interval.append(std_1000_epoch_test[closest_epoch_idx])
+            # Get the mean and std losses at the current interval index (i)
+            mean_train_losses_at_interval.append(data['mean_1000_epoch_losses'][i])
+            std_train_losses_at_interval.append(data['std_1000_epoch_losses'][i])
+            mean_test_losses_at_interval.append(data['mean_1000_epoch_test_losses'][i])
+            std_test_losses_at_interval.append(data['std_1000_epoch_test_losses'][i])
 
 
-        # Filter out None values while maintaining corresponding elements
-        # With the closest epoch logic, we should not have None values here anymore,
-        # but keeping the structure for robustness if needed later.
-        plottable_data = []
-        for j in range(len(inverse_widths)):
-            # Check if data is valid (should be with closest_epoch_idx)
-            if mean_train_losses_at_interval[j] is not None and mean_test_losses_at_interval[j] is not None:
-                 plottable_data.append((inverse_widths[j], mean_train_losses_at_interval[j], std_train_losses_at_interval[j],
-                                       mean_test_losses_at_interval[j], std_test_losses_at_interval[j]))
+        # At this point, we should have consistent lengths for all lists for this interval
+
+        plottable_inverse_widths = np.array(inverse_widths)
+        plottable_mean_train = np.array(mean_train_losses_at_interval)
+        plottable_std_train = np.array(std_train_losses_at_interval)
+        plottable_mean_test = np.array(mean_test_losses_at_interval)
+        plottable_std_test = np.array(std_test_losses_at_interval)
 
 
-        if plottable_data:
-            plottable_data_np = np.array(plottable_data)
-            plottable_inverse_widths = plottable_data_np[:, 0]
-            plottable_mean_train = plottable_data_np[:, 1]
-            plottable_std_train = plottable_data_np[:, 2]
-            plottable_mean_test = plottable_data_np[:, 3]
-            plottable_std_test = plottable_data_np[:, 4]
+        pl.errorbar(plottable_inverse_widths, plottable_mean_train, yerr=plottable_std_train, fmt='o-', label=f"Train Loss (Interval {i+1})") # Using interval number for clarity
+        pl.errorbar(plottable_inverse_widths, plottable_mean_test, yerr=plottable_std_test, fmt='s--', label=f"Test Loss (Interval {i+1})")
 
-
-            pl.errorbar(plottable_inverse_widths, plottable_mean_train, yerr=plottable_std_train, fmt='o-', label=f"Train Loss ({interval_labels[i]})")
-            pl.errorbar(plottable_inverse_widths, plottable_mean_test, yerr=plottable_std_test, fmt='s--', label=f"Test Loss ({interval_labels[i]})")
 
     pl.title("Mean Training and Test Loss vs 1/Width at Different Training Stages")
     pl.xlabel("1 / Width")
@@ -180,4 +167,4 @@ if valid_results:
     print(f"Saved combined training and test loss vs inverse width plot to {final_combined_loss_plot_path}")
 
 else:
-    print("No valid results to plot.")
+    print("No data loaded to plot.")
