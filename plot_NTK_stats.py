@@ -1,6 +1,8 @@
+import pickle
 import os
 import matplotlib.pyplot as pl
 import numpy as np
+
 # Directory where loss data is saved
 data_dir = "loss_data"
 
@@ -14,11 +16,12 @@ for filename in os.listdir(data_dir):
         try:
             with open(filepath, 'rb') as f:
                 data = pickle.load(f)
-                # Check if NTK properties exist in the loaded data
-                if 'ntk_norm' in data and 'ntk_eigenvalues' in data:
+                # Check if the new NTK properties exist in the loaded data
+                if ('ntk_norms_epochs' in data and 'std_ntk_norms_epochs' in data and 'ntk_record_epochs_norms' in data and
+                    'mean_eigenvalue_spectra' in data and 'std_eigenvalue_spectra' in data and 'ntk_record_epochs_eigenvalues' in data):
                     loaded_data_with_ntk.append(data)
                 else:
-                    print(f"Skipping file {filename}: NTK properties not found.")
+                    print(f"Skipping file {filename}: Required NTK properties not found.")
         except Exception as e:
             print(f"Error loading file {filename}: {e}")
 
@@ -26,25 +29,30 @@ for filename in os.listdir(data_dir):
 # Sort the loaded data by width
 loaded_data_with_ntk.sort(key=lambda x: x['width'])
 
-# Extract relevant data for plotting, including NTK properties
+# Extract relevant data for plotting NTK properties
 widths = [data['width'] for data in loaded_data_with_ntk]
-inverse_widths = [1 / width for width in widths]
-mean_train_losses_1000_epochs = [data['mean_1000_epoch_losses'] for data in loaded_data_with_ntk]
-std_train_losses_1000_epochs = [data['std_1000_epoch_losses'] for data in loaded_data_with_ntk]
-mean_test_losses_1000_epochs = [data['mean_1000_epoch_test_losses'] for data in loaded_data_with_ntk]
-std_test_losses_1000_epochs = [data['std_1000_epoch_test_losses'] for data in loaded_data_with_ntk]
-epochs_recorded_at = [data['epochs_recorded_at'] for data in loaded_data_with_ntk]
-ntk_norms = [data['ntk_norm'] for data in loaded_data_with_ntk] # Extract NTK norm
-ntk_eigenvalues = [data['ntk_eigenvalues'] for data in loaded_data_with_ntk] # Extract NTK eigenvalues
 
-print("Loaded data for widths (with NTK properties):", widths)
-print("Loaded NTK norms:", ntk_norms)
-print("Loaded NTK eigenvalues (first 5 for each width):")
-for i, eig_list in enumerate(ntk_eigenvalues):
-    if eig_list: # Check if the list is not empty
-      print(f"Width {widths[i]}: {eig_list[:5]}")
+# Data for NTK Norms
+ntk_norms_epochs_list = [data['ntk_norms_epochs'] for data in loaded_data_with_ntk]
+std_ntk_norms_epochs_list = [data['std_ntk_norms_epochs'] for data in loaded_data_with_ntk]
+ntk_record_epochs_norms_list = [data['ntk_record_epochs_norms'] for data in loaded_data_with_ntk]
+
+# Data for NTK Eigenvalues (mean and std of spectrum)
+mean_eigenvalue_spectra_list = [data['mean_eigenvalue_spectra'] for data in loaded_data_with_ntk] # List of lists (width -> epoch -> mean_spectrum)
+std_eigenvalue_spectra_list = [data['std_eigenvalue_spectra'] for data in loaded_data_with_ntk] # List of lists (width -> epoch -> std_spectrum)
+ntk_record_epochs_eigenvalues_list = [data['ntk_record_epochs_eigenvalues'] for data in loaded_data_with_ntk] # List of lists (width -> recorded epochs for eigenvalues)
+
+
+print("Loaded data for widths (with processed NTK properties):", widths)
+
+# Print shapes or snippets of loaded data to confirm
+print("Loaded NTK norms (first epoch for each width):", [norms[0] if norms else None for norms in ntk_norms_epochs_list])
+print("Loaded mean eigenvalue spectra (snippet for first epoch of each width):")
+for i, mean_spectra_epochs in enumerate(mean_eigenvalue_spectra_list):
+    if mean_spectra_epochs and mean_spectra_epochs[0]: # Check if data exists
+        print(f"Width {widths[i]}, Epoch {ntk_record_epochs_eigenvalues_list[i][0]}: {mean_spectra_epochs[0][:5]}...")
     else:
-      print(f"Width {widths[i]}: No eigenvalues recorded.")
+        print(f"Width {widths[i]}: No mean eigenvalue spectrum data for first epoch.")
 
 # Plotting training and test losses over epochs for each width
 plot_dir_analysis = "plots/analysis_plots"
