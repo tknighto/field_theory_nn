@@ -1,3 +1,6 @@
+import os
+import matplotlib.pyplot as pl
+import numpy as np
 # Directory where loss data is saved
 data_dir = "loss_data"
 
