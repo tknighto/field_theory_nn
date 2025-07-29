@@ -218,7 +218,6 @@ else:
     print("No data with NTK properties loaded to plot.")
 
 
-
 import pickle
 import os
 import numpy as np
@@ -254,6 +253,13 @@ for filename in os.listdir(data_dir):
             epochs_for_change = ntk_record_epochs_np[1:]
 
             if len(relative_change_mean) > 0:
+                # Find and print the highest and lowest change
+                highest_change = np.max(relative_change_mean)
+                lowest_change = np.min(relative_change_mean)
+                print(f"Width {width}: Highest relative change in NTK norm: {highest_change:.6f}")
+                print(f"Width {width}: Lowest relative change in NTK norm: {lowest_change:.6f}")
+
+
                 # Plotting the relative change
                 pl.figure()
                 pl.plot(epochs_for_change, relative_change_mean, label="Mean Relative Change in Norm")
