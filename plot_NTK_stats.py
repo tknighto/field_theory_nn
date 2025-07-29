@@ -216,3 +216,98 @@ if loaded_data_with_ntk: # Ensure data with NTK properties was loaded
 
 else:
     print("No data with NTK properties loaded to plot.")
+
+
+
+import pickle
+import os
+import numpy as np
+import matplotlib.pyplot as pl
+
+# Directory where the loss data is saved
+data_dir = "loss_data"
+# Directory to save the new plots
+ntk_norm_change_plot_dir = "plots/ntk_norm_change_plots"
+os.makedirs(ntk_norm_change_plot_dir, exist_ok=True)
+
+# Iterate through the saved data files
+for filename in os.listdir(data_dir):
+    if filename.endswith(".pkl"):
+        filepath = os.path.join(data_dir, filename)
+        with open(filepath, 'rb') as f:
+            data = pickle.load(f)
+
+        width = data.get('width')
+        mean_ntk_norms = data.get('ntk_norms_epochs')
+        std_ntk_norms = data.get('std_ntk_norms_epochs')
+        ntk_record_epochs = data.get('ntk_record_epochs_norms')
+
+        if mean_ntk_norms and ntk_record_epochs and len(mean_ntk_norms) > 1:
+            mean_ntk_norms_np = np.array(mean_ntk_norms)
+            ntk_record_epochs_np = np.array(ntk_record_epochs)
+
+            # Compute the relative change in Frobenius norm
+            # Change at time t is (Norm_t+1 - Norm_t) / Norm_t
+            relative_change_mean = np.diff(mean_ntk_norms_np) / mean_ntk_norms_np[:-1]
+
+            # The corresponding epochs for the relative change are the epochs where the second norm was recorded
+            epochs_for_change = ntk_record_epochs_np[1:]
+
+            if len(relative_change_mean) > 0:
+                # Plotting the relative change
+                pl.figure()
+                pl.plot(epochs_for_change, relative_change_mean, label="Mean Relative Change in Norm")
+
+                # If std deviations are available, compute and plot the std of the relative change
+                if std_ntk_norms and len(std_ntk_norms) == len(mean_ntk_norms):
+                    std_ntk_norms_np = np.array(std_ntk_norms)
+                    # Propagate uncertainty for division and subtraction
+                    # Assuming independence for simplicity: std(a/b) approx |a/b| * sqrt((std(a)/a)^2 + (std(b)/b)^2)
+                    # std(a-b) approx sqrt(std(a)^2 + std(b)^2)
+
+                    # Std of the difference: sqrt(std(Norm_t+1)^2 + std(Norm_t)^2)
+                    std_diff = np.sqrt(std_ntk_norms_np[1:]**2 + std_ntk_norms_np[:-1]**2)
+
+                    # Relative change is diff / Norm_t. Std of relative change:
+                    # approx |diff / Norm_t| * sqrt((std(diff)/diff)^2 + (std(Norm_t)/Norm_t)^2)
+                    # Need to handle cases where diff or Norm_t are close to zero.
+                    # A simpler approach for visualization might be to plot error bars based on propagated error bounds.
+
+                    # Let's compute approximate error bounds for the relative change
+                    # Lower bound for change: ( (mean_t+1 - std_t+1) - (mean_t + std_t) ) / (mean_t + std_t)
+                    # Upper bound for change: ( (mean_t+1 + std_t+1) - (mean_t - std_t) ) / (mean_t - std_t)
+                    # This can be complex and might result in undefined values if mean_t is zero or negative.
+
+                    # A more straightforward approach is to calculate the relative change for mean + std and mean - std bounds
+                    # and plot those as approximate error bounds.
+                    # Note: This is an approximation and not a rigorous error propagation.
+
+                    # Lower bound of mean_ntk_norms (clamped at a small positive value to avoid division by zero)
+                    lower_bound_norms = np.maximum(mean_ntk_norms_np - std_ntk_norms_np, 1e-9)
+                    # Upper bound of mean_ntk_norms
+                    upper_bound_norms = mean_ntk_norms_np + std_ntk_norms_np
+
+                    # Approximate lower and upper bounds for the relative change
+                    relative_change_lower_bound = np.diff(lower_bound_norms) / lower_bound_norms[:-1]
+                    relative_change_upper_bound = np.diff(upper_bound_norms) / upper_bound_norms[:-1]
+
+                    # Plot the approximate error bounds
+                    pl.fill_between(epochs_for_change, relative_change_lower_bound, relative_change_upper_bound, alpha=0.3, label="Approx. ±1 Std Dev")
+
+
+                pl.title(f"Relative Change in NTK Frobenius Norm vs Epoch (Width {width})")
+                pl.xlabel("Epoch")
+                pl.ylabel("Relative Change in Norm")
+                pl.grid(True)
+                pl.legend()
+                plot_filename = f"ntk_norm_relative_change_width_{width}.png"
+                plot_filepath = os.path.join(ntk_norm_change_plot_dir, plot_filename)
+                pl.savefig(plot_filepath)
+                pl.close()
+                print(f"Saved relative change in NTK norm plot for width {width} to {plot_filepath}")
+            else:
+                print(f"Not enough data points to compute relative change for width {width}.")
+        else:
+            print(f"Skipping width {width} due to insufficient NTK norm data.")
+
+print("Finished plotting relative change in NTK Frobenius norm.")
