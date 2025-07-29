@@ -168,54 +168,7 @@ else:
     print("No data with NTK properties loaded to plot.")
 
 
-# Plotting training and test losses over epochs for each width
-plot_dir_analysis = "plots/analysis_plots"
-os.makedirs(plot_dir_analysis, exist_ok=True)
 
-for i, width in enumerate(widths):
-    pl.figure(figsize=(10, 6))
-    pl.plot(epochs_recorded_at[i], mean_train_losses_1000_epochs[i], label="Mean Training Loss")
-    pl.fill_between(epochs_recorded_at[i], np.array(mean_train_losses_1000_epochs[i]) - np.array(std_train_losses_1000_epochs[i]),
-                    np.array(mean_train_losses_1000_epochs[i]) + np.array(std_train_losses_1000_epochs[i]), alpha=0.3, label="±1 Std Dev (Train)")
-
-    pl.plot(epochs_recorded_at[i], mean_test_losses_1000_epochs[i], label="Mean Test Loss", linestyle='--')
-    pl.fill_between(epochs_recorded_at[i], np.array(mean_test_losses_1000_epochs[i]) - np.array(std_test_losses_1000_epochs[i]),
-                    np.array(mean_test_losses_1000_epochs[i]) + np.array(std_test_losses_1000_epochs[i]), alpha=0.3, label="±1 Std Dev (Test)")
-
-
-    pl.title(f"Training and Test Loss over Epochs (Width: {width})")
-    pl.xlabel("Epoch")
-    pl.ylabel("MSE")
-    pl.yscale('log')
-    pl.grid(True)
-    pl.legend()
-    plot_path = os.path.join(plot_dir_analysis, f"loss_over_epochs_width_{width}.png")
-    pl.savefig(plot_path)
-    pl.close()
-    print(f"Saved loss over epochs plot for width {width} to {plot_path}")
-
-# Plotting mean training loss vs training time for all widths on the same graph
-pl.figure(figsize=(10, 6))
-for i, data in enumerate(loaded_data):
-    width = data['width']
-    epochs = data['epochs_recorded_at']
-    mean_losses = data['mean_1000_epoch_losses']
-    # Assuming LEARNING_RATE is calculated as 0.15 / width
-    learning_rate = 0.15 / width
-    training_times = [epoch * learning_rate for epoch in epochs]
-
-    pl.plot(training_times, mean_losses, marker='o', linestyle='-', label=f'Width: {width}')
-
-pl.title("Mean Training Loss vs Training Time Across Widths")
-pl.xlabel("Training Time (Epochs * Learning Rate)")
-pl.ylabel("Mean Training Loss")
-pl.yscale('log')
-pl.grid(True)
-pl.legend()
-plot_path_combined_time = os.path.join(plot_dir_analysis, "mean_loss_vs_training_time_all_widths.png")
-pl.savefig(plot_path_combined_time)
-pl.close()
-print(f"Saved combined loss vs training time plot to {plot_path_combined_time}")
 
 
 import os
