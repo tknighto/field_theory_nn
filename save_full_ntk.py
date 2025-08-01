@@ -205,7 +205,7 @@ def train_network(model, x_train_split, y_train_split, x_test_split, y_test_spli
     record_epochs = sorted(list(set([max(0, min(total_epochs - 1, ep)) for ep in record_epochs])))
 
     # Define training time intervals at which to compute NTK
-    ntk_record_interval = 1.0 # Record NTK every 1 training time unit
+    ntk_record_interval = 3 # Record NTK every 3 training time units
     current_ntk_record_time = 0.0
     next_ntk_record_epoch = 0
 
@@ -286,7 +286,7 @@ def train_model(width):
     print(f"Using device: {device}")
     print(mp.cpu_count())
 
-    NUM_EPOCHS = 1000* width
+    NUM_EPOCHS = 100000 * width
     LEARNING_RATE = 0.15 / width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
