@@ -124,3 +124,99 @@ pl.savefig(plot_filename)
 pl.close()
 
 print("\nFinished plotting relative NTK norm change.")
+
+import pickle
+import os
+import numpy as np
+import matplotlib.pyplot as pl
+import torch
+
+data_dir = "loss_data"
+widths = range(5, 50, 20) # Use the same widths as in the training code
+
+plot_dir = "plots/loss_ntk_combined_plots"
+os.makedirs(plot_dir, exist_ok=True)
+
+for width in widths:
+    data_filename = os.path.join(data_dir, f"loss_data_width_{width}.pkl")
+    if not os.path.exists(data_filename):
+        print(f"Data file not found for width {width}: {data_filename}")
+        continue
+
+    with open(data_filename, 'rb') as f:
+        data = pickle.load(f)
+
+    # Get loss data (using mean 1000-epoch losses for comparison with NTK times)
+    mean_1000_epoch_losses = data.get('mean_1000_epoch_losses')
+    epochs_recorded_at = data.get('epochs_recorded_at')
+    # Need to convert epochs to training time for the x-axis
+    # Assuming LEARNING_RATE is consistent with how training times were recorded for NTK
+    # We'll need to retrieve the LEARNING_RATE used for this width.
+    # This is not directly saved, so let's assume we can calculate it as 0.15 / width
+    learning_rate = 0.15 / width
+    loss_training_times = [(epoch + 1) * learning_rate for epoch in epochs_recorded_at]
+
+
+    # Get NTK matrix data and compute relative norm changes
+    mean_ntk_matrices_times = data.get('mean_ntk_matrices_times')
+    ntk_record_times_matrices = data.get('ntk_record_times_matrices')
+
+    if mean_1000_epoch_losses is None or loss_training_times is None or \
+       mean_ntk_matrices_times is None or ntk_record_times_matrices is None or \
+       len(mean_ntk_matrices_times) < 2:
+        print(f"Not enough data available for width {width} to plot combined loss and NTK change.")
+        continue
+
+    relative_ntk_norm_changes = []
+    times_for_ntk_change = []
+
+    # Compute relative change in NTK Frobenius norm
+    for i in range(len(mean_ntk_matrices_times) - 1):
+        ntk_t = torch.tensor(mean_ntk_matrices_times[i])
+        ntk_t_plus_1 = torch.tensor(mean_ntk_matrices_times[i+1])
+        time_t = ntk_record_times_matrices[i]
+
+        diff_norm = torch.linalg.norm(ntk_t_plus_1 - ntk_t, ord='fro').item()
+        norm_t = torch.linalg.norm(ntk_t, ord='fro').item()
+
+        if norm_t > 0:
+            relative_change = diff_norm / norm_t
+            relative_ntk_norm_changes.append(relative_change)
+            times_for_ntk_change.append(time_t)
+
+    if not relative_ntk_norm_changes:
+         print(f"No relative NTK norm changes computed for width {width}.")
+         continue
+
+    print(f"\n--- Plotting Loss and NTK Change for Width {width} ---")
+
+    fig, ax1 = pl.subplots(figsize=(10, 6))
+
+    # Plotting Loss on the first y-axis
+    ax1.plot(loss_training_times, mean_1000_epoch_losses, 'b-', label='Mean 1000-Epoch Training Loss')
+    ax1.set_xlabel("Training Time (epochs * learning rate)")
+    ax1.set_ylabel("Loss", color='b')
+    ax1.tick_params(axis='y', labelcolor='b')
+    ax1.set_yscale('log')
+    ax1.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # Creating a second y-axis for NTK change
+    ax2 = ax1.twinx()
+    ax2.plot(times_for_ntk_change, relative_ntk_norm_changes, 'r-', label='Relative NTK Norm Change')
+    ax2.set_ylabel("Relative NTK Norm Change", color='r')
+    ax2.tick_params(axis='y', labelcolor='r')
+    ax2.set_yscale('log')
+
+
+    # Add a title and legends
+    pl.title(f"Loss and Relative NTK Norm Change vs. Training Time (Width {width})")
+    fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
+
+
+    plot_filename = os.path.join(plot_dir, f"loss_ntk_combined_width_{width}.png")
+    pl.savefig(plot_filename)
+    pl.close(fig) # Close the figure to prevent it from displaying inline
+
+    print(f"Combined plot saved for width {width} to {plot_filename}")
+
+print("\nFinished plotting combined loss and relative NTK norm change.")
