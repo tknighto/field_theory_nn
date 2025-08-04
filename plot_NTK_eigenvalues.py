@@ -2,6 +2,7 @@ import pickle
 import os
 import numpy as np
 import matplotlib.pyplot as pl
+import torch
 
 data_dir = "loss_data"
 widths = range(5, 50, 20) # Use the same widths as in the training code
@@ -58,7 +59,7 @@ import pickle
 import os
 import numpy as np
 import matplotlib.pyplot as pl
-import torch
+
 
 data_dir = "loss_data"
 widths = range(5, 50, 20) # Use the same widths as in the training code
