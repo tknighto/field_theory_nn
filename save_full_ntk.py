@@ -109,6 +109,8 @@ import matplotlib.pyplot as pl
 import os
 from scipy.special import legendre
 import pickle # Import pickle for saving data
+import math # Import math for sqrt
+
 
 # Redefine necessary global variables from the first cell
 ENSEMBLE_SIZE = 10
@@ -205,7 +207,7 @@ def train_network(model, x_train_split, y_train_split, x_test_split, y_test_spli
     record_epochs = sorted(list(set([max(0, min(total_epochs - 1, ep)) for ep in record_epochs])))
 
     # Define training time intervals at which to compute NTK
-    ntk_record_interval = 3 # Record NTK every 3 training time units
+    ntk_record_interval = 1.0 # Record NTK every 1 training time unit
     current_ntk_record_time = 0.0
     next_ntk_record_epoch = 0
 
@@ -286,7 +288,7 @@ def train_model(width):
     print(f"Using device: {device}")
     print(mp.cpu_count())
 
-    NUM_EPOCHS = 100000 * width
+    NUM_EPOCHS = 1000* width
     LEARNING_RATE = 0.15 / width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
@@ -304,14 +306,16 @@ def train_model(width):
             input_dim = 1
             for _ in range(num_layers):
                 layer = nn.Linear(input_dim, neurons_per_layer)
-                nn.init.normal_(layer.weight, mean=0.0, std=1.0 / width)
+                # Weight initialization with std = 1 / input_dim
+                nn.init.normal_(layer.weight, mean=0.0, std=1.0 / input_dim)
                 nn.init.normal_(layer.bias, mean=0.0, std=1.0)
                 layers.append(layer)
                 layers.append(nn.Tanh())
                 input_dim = neurons_per_layer
 
             final_layer = nn.Linear(input_dim, 1)
-            nn.init.normal_(final_layer.weight, mean=0.0, std=1.0 / width)
+            # Weight initialization for final layer with std = 1 / input_dim
+            nn.init.normal_(final_layer.weight, mean=0.0, std=1.0 / input_dim)
             nn.init.normal_(final_layer.bias, mean=0.0, std=1.0)
             layers.append(final_layer)
 
