@@ -56,3 +56,60 @@ for i, width in enumerate(widths):
     pl.close()
 
 print("\nFinished plotting mean losses over epochs with standard deviation.")
+
+import pickle
+import os
+import numpy as np
+
+data_dir = "loss_data"
+widths = range(5, 50, 20) # Use the same widths as in the training code
+
+print("Checking standard deviation data for potential issues...")
+
+for width in widths:
+    data_filename = os.path.join(data_dir, f"loss_data_width_{width}.pkl")
+    if not os.path.exists(data_filename):
+        print(f"Data file not found for width {width}: {data_filename}")
+        continue
+
+    with open(data_filename, 'rb') as f:
+        data = pickle.load(f)
+
+    std_train_losses = data.get('std_1000_epoch_losses')
+    std_test_losses = data.get('std_1000_epoch_test_losses')
+    mean_train_losses = data.get('mean_1000_epoch_losses') # Get mean losses for comparison
+
+    print(f"\n--- Checking Data for Width {width} ---")
+
+    if std_train_losses is not None:
+        print(f"Standard deviation of training losses (1000-epoch):")
+        print(std_train_losses)
+        # Check for zero values
+        if np.any(np.array(std_train_losses) == 0):
+            print("Warning: Zero values found in standard deviation of training losses.")
+        # Check for unusually small values compared to mean loss (optional, requires context)
+        # For a rough check, compare to a small fraction of the mean loss (if mean loss > 0)
+        if mean_train_losses is not None and len(mean_train_losses) == len(std_train_losses):
+             small_threshold = np.mean(mean_train_losses) * 1e-6 # Example threshold
+             if np.any(np.array(std_train_losses) < small_threshold):
+                  print(f"Note: Some standard deviation values are very small (less than {small_threshold:.2e}) compared to mean training loss.")
+
+
+    else:
+        print("Standard deviation of training losses data not found.")
+
+    if std_test_losses is not None:
+        print(f"\nStandard deviation of test losses (1000-epoch):")
+        print(std_test_losses)
+        # Check for zero values
+        if np.any(np.array(std_test_losses) == 0):
+            print("Warning: Zero values found in standard deviation of test losses.")
+        # Check for unusually small values compared to mean loss (optional)
+        if mean_train_losses is not None and len(mean_train_losses) == len(std_test_losses): # Using train mean as rough scale
+             small_threshold = np.mean(mean_train_losses) * 1e-6
+             if np.any(np.array(std_test_losses) < small_threshold):
+                  print(f"Note: Some standard deviation values are very small (less than {small_threshold:.2e}) compared to mean training loss.")
+    else:
+        print("Standard deviation of test losses data not found.")
+
+print("\nFinished checking standard deviation data.")
