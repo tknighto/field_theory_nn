@@ -44,6 +44,7 @@ for width in widths:
         pl.xlabel("Training Time (epochs * learning rate)")
         pl.ylabel("Eigenvalue Magnitude (Absolute)")
         pl.yscale('log')
+        pl.xscale('log')  # Use log scale for better visualization
         # pl.legend() # Comment out legend if too many eigenvalues
         pl.grid(True)
         plot_filename = os.path.join(plot_dir, f"eigenvalues_vs_time_width_{width}.png")
