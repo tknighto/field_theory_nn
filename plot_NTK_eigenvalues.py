@@ -28,31 +28,92 @@ for width in widths:
 
     print(f"\n--- Plotting Eigenvalues for Width {width} ---")
 
+    # --- Plot with Log Scale X-axis (Full Range) ---
+    # Keep the log scale plot for the full range as it might still be useful
     pl.figure(figsize=(10, 6))
 
     # Transpose the list of eigenvalue lists to plot each eigenvalue's trajectory over time
     # mean_eigenvalue_spectra is a list of lists: [[eigs@t1], [eigs@t2], ...]
     # We need: [[eig1@t1, eig1@t2, ...], [eig2@t1, eig2@t2, ...], ...]
-    # Check if mean_eigenvalue_spectra is not empty and has consistent lengths
     if mean_eigenvalue_spectra and all(len(eig_list) == len(mean_eigenvalue_spectra[0]) for eig_list in mean_eigenvalue_spectra):
         eigenvalues_over_time = list(zip(*mean_eigenvalue_spectra))
 
         for i, eigenvalue_trajectory in enumerate(eigenvalues_over_time):
             pl.plot(ntk_record_times_eigenvalues, eigenvalue_trajectory, label=f'Eigenvalue {i+1}')
 
-        pl.title(f"Eigenvalues of NTK vs. Training Time (Width {width})")
+        pl.title(f"Eigenvalues of NTK vs. Training Time (Log Scale X) (Width {width})")
         pl.xlabel("Training Time (epochs * learning rate)")
         pl.ylabel("Eigenvalue Magnitude (Absolute)")
-        pl.yscale('log')
-        pl.xscale('log')  # Use log scale for better visualization
+        pl.yscale('log')  # Use log scale for better visualization
         # pl.legend() # Comment out legend if too many eigenvalues
         pl.grid(True)
-        plot_filename = os.path.join(plot_dir, f"eigenvalues_vs_time_width_{width}.png")
-        pl.savefig(plot_filename)
+        plot_filename_log = os.path.join(plot_dir, f"eigenvalues_vs_time_width_{width}.png")
+        pl.savefig(plot_filename_log)
         pl.close()
-        print(f"Plot saved for width {width} to {plot_filename}")
+        print(f"Full plot saved for width {width} to {plot_filename_log}")
     else:
-        print(f"Skipping plotting for width {width} due to inconsistent or missing eigenvalue data.")
+        print(f"Skipping full range plotting for width {width} due to inconsistent or missing eigenvalue data.")
+
+    # --- Plot with Linear Scale X-axis (Zoomed-in Early Times) ---
+    # Create a new figure specifically for the zoomed-in view
+    if mean_eigenvalue_spectra and all(len(eig_list) == len(mean_eigenvalue_spectra[0]) for eig_list in mean_eigenvalue_spectra):
+        pl.figure(figsize=(10, 6))
+
+        eigenvalues_over_time = list(zip(*mean_eigenvalue_spectra))
+
+        # Determine a reasonable x-limit for the zoomed-in plot (e.g., first few training time units)
+        early_time_limit = 5.0 # Example: Focus on the first 5 training time units
+        # Adjust the limit based on the actual recorded times if necessary to ensure points are included
+        if ntk_record_times_eigenvalues and len(ntk_record_times_eigenvalues) > 0:
+             # Find the largest recorded time that is less than or equal to early_time_limit,
+             # or take a few points if the first few times are very small.
+             valid_early_times_indices = [i for i, t in enumerate(ntk_record_times_eigenvalues) if t <= early_time_limit]
+             if valid_early_times_indices:
+                  zoom_end_index = valid_early_times_indices[-1] + 1 # Include the point at or below the limit
+             elif ntk_record_times_eigenvalues: # If no times <= limit, just take the first point if exists
+                 zoom_end_index = 1
+             else: # No recorded times
+                 zoom_end_index = 0
+
+             # Ensure we have at least two points to plot a line
+             if zoom_end_index < 2 and len(ntk_record_times_eigenvalues) >= 2:
+                 # If not enough points within the strict limit, take the first two points if available
+                 zoom_end_index = 2
+             elif zoom_end_index < 1 and len(ntk_record_times_eigenvalues) >= 1:
+                 zoom_end_index = 1
+
+
+        else: # No recorded times at all
+             zoom_end_index = 0
+
+
+        zoomed_times = ntk_record_times_eigenvalues[:zoom_end_index]
+
+        if len(zoomed_times) > 1: # Only plot if there are at least two time points in the zoomed range
+            for i, eigenvalue_trajectory in enumerate(eigenvalues_over_time):
+                zoomed_eigenvalue_trajectory = eigenvalue_trajectory[:zoom_end_index]
+                pl.plot(zoomed_times, zoomed_eigenvalue_trajectory, label=f'Eigenvalue {i+1}')
+
+            pl.title(f"Eigenvalues of NTK vs. Training Time (Zoomed-in Early Times) (Width {width})")
+            pl.xlabel("Training Time (epochs * learning rate)")
+            pl.ylabel("Eigenvalue Magnitude (Absolute)")
+            pl.yscale('log') # Keep y-scale as log if eigenvalues vary greatly
+            pl.xscale('linear') # Use linear scale for zoomed-in view
+            # Set x-axis limit to the maximum time in the zoomed range
+            pl.xlim(0, max(zoomed_times) if zoomed_times else early_time_limit)
+            # pl.legend() # Comment out legend if too many eigenvalues
+            pl.grid(True)
+            plot_filename_linear = os.path.join(plot_dir, f"eigenvalues_vs_time_linear_x_early_width_{width}.png")
+            pl.savefig(plot_filename_linear)
+            pl.close()
+            print(f"Linear scale X (zoomed) plot saved for width {width} to {plot_filename_linear}")
+        else:
+            print(f"Not enough data points in the early time range ({early_time_limit} or first points) to create a zoomed-in plot for width {width}.")
+            pl.close() # Close the empty figure
+
+    else:
+        print(f"Skipping zoomed-in plotting for width {width} due to inconsistent or missing eigenvalue data.")
+
 
 print("\nFinished plotting eigenvalues.")
 
