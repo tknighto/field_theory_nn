@@ -62,7 +62,7 @@ for width in widths:
         eigenvalues_over_time = list(zip(*mean_eigenvalue_spectra))
 
         # Determine a reasonable x-limit for the zoomed-in plot (e.g., first few training time units)
-        early_time_limit = 5.0 # Example: Focus on the first 5 training time units
+        early_time_limit = 1000 # Example: Focus on the first 5 training time units
         # Adjust the limit based on the actual recorded times if necessary to ensure points are included
         if ntk_record_times_eigenvalues and len(ntk_record_times_eigenvalues) > 0:
              # Find the largest recorded time that is less than or equal to early_time_limit,
