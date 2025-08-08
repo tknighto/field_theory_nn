@@ -147,19 +147,19 @@ def train_model_thread(width, results_list):
         # train_model now returns 11 items: trained_model, interval_losses, final_loss, losses_1000_epochs, test_losses_1000_epochs, ntk_norms_epochs, ntk_eigenvalues_epochs, ntk_matrices_epochs, ntk_record_times, train_losses, training_times
         (mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss,
          mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses,
-         std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times) = train_model(width)
+         std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, all_ensemble_outputs) = train_model(width)
 
         print(f"Finished training for width: {width} in thread.")
         with results_lock:
-            # Store all returned values along with the width (11 items + 1 width = 12 items)
+            # Store all returned values along with the width (12 items + 1 width = 13 items)
             results_list.append((mean_interval_losses, std_interval_losses, mean_final_loss,
                                 std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses,
                                 mean_1000_epoch_test_losses, std_1000_epoch_test_losses,
-                                all_ensemble_train_losses, all_ensemble_training_times, width)) # Adjusted order to match unpacking in main loop
+                                all_ensemble_train_losses, all_ensemble_training_times, all_ensemble_outputs, width)) # Adjusted order to match unpacking in main loop
     except Exception as e:
         print(f"Error training for width {width}: {e}")
         with results_lock:
-            results_list.append((None, None, None, None, None, None, None, None, None, None, width)) # Ensure 11 None values + width
+            results_list.append((None, None, None, None, None, None, None, None, None, None, None, width)) # Ensure 12 None values + width
 
 
 # Define the train_network function with 1000 epoch loss recording and time-dependent NTK computation
@@ -288,7 +288,7 @@ def train_model(width):
     print(f"Using device: {device}")
     print(mp.cpu_count())
 
-    NUM_EPOCHS = 100000 * width
+    NUM_EPOCHS = 1000 * width
     LEARNING_RATE = 0.15 / width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
@@ -393,7 +393,7 @@ def train_model(width):
          std_final_loss = None
 
 
-    ensemble_outputs = np.stack(ensemble_outputs, axis=0)
+    ensemble_outputs = np.stack(ensemble_outputs, axis=0) # Stack outputs for later analysis/plotting
 
     mean_output = np.mean(ensemble_outputs, axis=0).squeeze()
     std_output = np.std(ensemble_outputs, axis=0).squeeze()
@@ -548,7 +548,8 @@ def train_model(width):
         'std_ntk_matrices_times': std_ntk_matrices, # Save std NTK matrices over times
         'ntk_record_times_matrices': times_with_matrix_data, # Save the list of times for matrices
         'all_ensemble_train_losses': all_ensemble_train_losses, # Save individual training losses
-        'all_ensemble_training_times': all_ensemble_training_times # Save individual training times
+        'all_ensemble_training_times': all_ensemble_training_times, # Save individual training times
+        'all_ensemble_outputs': ensemble_outputs.tolist() # Save individual ensemble outputs
     }
     data_filename = os.path.join(data_dir, f"loss_data_width_{width}.pkl")
     with open(data_filename, 'wb') as f:
@@ -558,7 +559,7 @@ def train_model(width):
 
 
     # Return mean/std of final losses and other recorded data
-    return mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times
+    return mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist()
 
 
 # List of widths to iterate over
@@ -584,14 +585,14 @@ print("Threaded execution finished.")
 
 # Let's update train_model_thread to capture the new return values from train_model
 # The current train_model returns 8 items. The train_model_thread expects 8 + 1 (width) = 9 items.
-# The train_model function now returns 11 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times
-# The train_model_thread adds the width. So the results tuple will have 11 items.
+# The train_model function now returns 11 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist()
+# The train_model_thread adds the width. So the results tuple will have 12 items.
 # This seems consistent with the existing valid_results processing logic.
 
 valid_results = [r for r in results if r[0] is not None]
 
-# Sort by width (index 10)
-valid_results.sort(key=lambda x: x[10])
+# Sort by width (index 11)
+valid_results.sort(key=lambda x: x[11])
 
 if valid_results:
     # Assuming mean_interval_losses is the first item (index 0) and has the same length for all valid results
@@ -603,8 +604,8 @@ if valid_results:
         interval_stds_across_widths = [[] for _ in range(num_intervals_plotting)]
         inverse_widths = []
 
-        # Update the unpacking in the loop to match the return of train_model_thread (now 11 items)
-        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, width in valid_results:
+        # Update the unpacking in the loop to match the return of train_model_thread (now 12 items)
+        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, all_ensemble_outputs_individual, width in valid_results:
              inverse_widths.append(1 / width)
              for i in range(num_intervals_plotting):
                  interval_means_across_widths[i].append(mean_interval[i])
@@ -641,7 +642,7 @@ if valid_results:
         os.makedirs(plot_loss_trajectories_dir, exist_ok=True)
 
         # Since results are sorted by width, iterate through them
-        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, width in valid_results:
+        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, all_ensemble_outputs_individual, width in valid_results:
              pl.figure(figsize=(10, 6))
              for i in range(ENSEMBLE_SIZE):
                  pl.plot(all_ensemble_training_times_individual[i], all_ensemble_train_losses_individual[i], label=f'Model {i+1}')
