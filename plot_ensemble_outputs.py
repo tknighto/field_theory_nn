@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as pl
 import numpy as np
 import torch
+from scipy.special import legendre
 
 # Redefine the true function and data (as they were in the original code)
 def true_function(x):
