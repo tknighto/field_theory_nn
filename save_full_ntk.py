@@ -118,7 +118,7 @@ NUM_LAYERS = 1
 
 # Redefine the true function and data
 def true_function(x):
-    P = legendre(4)
+    P = legendre(5)  # 5th degree Legendre polynomial
     x_np = x.numpy().squeeze()
     y_np = P(x_np)
     return torch.tensor(y_np, dtype=torch.float32).unsqueeze(1)
