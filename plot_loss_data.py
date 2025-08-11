@@ -67,7 +67,7 @@ for i, data in enumerate(loaded_data):
     learning_rate = 0.15 / width
     training_times = [epoch * learning_rate for epoch in epochs]
 
-    pl.plot(training_times, mean_losses, marker='o', linestyle='-', label=f'Width: {width}')
+    pl.plot(training_times, mean_losses, linestyle='-', label=f'Width: {width}')
 
 pl.title("Mean Training Loss vs Training Time Across Widths")
 pl.xlabel("Training Time (Epochs * Learning Rate)")
