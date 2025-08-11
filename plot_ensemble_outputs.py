@@ -7,14 +7,15 @@ from scipy.special import legendre
 
 # Redefine the true function and data (as they were in the original code)
 def true_function(x):
-    P = legendre(4)
+    P = legendre(5)
     x_np = x.numpy().squeeze()
     y_np = P(x_np)
     return torch.tensor(y_np, dtype=torch.float32).unsqueeze(1)
 
 x_train = torch.linspace(-1, 1, 24).unsqueeze(1)
 y_train = true_function(x_train)
-
+x_real = torch.linspace(-1, 1, 100).unsqueeze(1)
+y_real = true_function(x_real)
 # Directory where the loss data is saved
 data_dir = "loss_data"
 
@@ -39,7 +40,7 @@ for filename in os.listdir(data_dir):
         pl.figure(figsize=(10, 6))
 
         # Plot the true function
-        pl.plot(x_train.squeeze().numpy(), y_train.squeeze().numpy(), label='True Function', color='black', linewidth=2)
+        pl.plot(x_real.squeeze().numpy(), y_real.squeeze().numpy(), label='True Function', color='black', linewidth=2)
 
         # Plot each model's output from the ensemble
         for i in range(ensemble_outputs_np.shape[0]):
