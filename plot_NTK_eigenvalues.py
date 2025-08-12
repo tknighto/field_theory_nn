@@ -442,7 +442,7 @@ for data in all_widths_data:
             if time_idx < len(mean_eigenvalue_spectra_times) and eigenvalue_index < len(mean_eigenvalue_spectra_times[time_idx]):
                 lambda_t = mean_eigenvalue_spectra_times[time_idx][eigenvalue_index]
                 lambda_0 = initial_eigenvalue_spectrum[eigenvalue_index]
-                f_lambda_t = width * (lambda_t - lambda_0)
+                f_lambda_t = (lambda_t - lambda_0)
                 f_lambda_t_values.append(f_lambda_t)
                 training_times_for_plot.append(t)
             else:
