@@ -63,11 +63,10 @@ pl.xlabel("1 / width")
 pl.ylabel("Standard Deviation of NTK Norm")
 pl.grid(True)
 pl.legend()
-pl.xscale('log') # Use log scale for inverse width for better visualization
 
 plot_dir = "plots/ntk_analysis"
 os.makedirs(plot_dir, exist_ok=True)
-plot_filename = os.path.join(plot_dir, "std_ntk_norm_vs_inverse_width_at_times.png")
+plot_filename = os.path.join(plot_dir, "std_ntk_norm_vs_inverse_width_at_times_linear_x.png")
 pl.savefig(plot_filename)
 pl.close()
 
