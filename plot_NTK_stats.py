@@ -4,7 +4,7 @@ import matplotlib.pyplot as pl
 import numpy as np
 
 data_dir = "loss_data"
-widths = range(5, 50, 20) # Use the same widths as in the training code
+widths = range(5, 90, 20) # Use the same widths as in the training code
 
 plot_dir = "plots/ntk_norm_plots"
 os.makedirs(plot_dir, exist_ok=True)
