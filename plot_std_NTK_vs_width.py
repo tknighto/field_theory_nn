@@ -56,17 +56,21 @@ colors = ['blue', 'red', 'green', 'purple']
 labels = [f'Time ≈ {plot_times[i]:.2f}' for i in range(num_plot_times)]
 
 for i in range(num_plot_times):
-    pl.plot(inverse_widths, std_ntk_norms_at_plot_times_across_widths[i], marker='o', linestyle='-', color=colors[i], label=labels[i])
+    # Convert the list to a NumPy array before multiplication
+    std_devs = np.array(std_ntk_norms_at_plot_times_across_widths[i])
+    inverse_widths_np = np.array(inverse_widths) # Convert inverse_widths to numpy array for element-wise multiplication
+    pl.plot(inverse_widths_np, std_devs * inverse_widths_np, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
-pl.title("Standard Deviation of NTK Norm vs 1/Width at Selected Training Times")
+
+pl.title("Standard Deviation of NTK Norm * (1/Width) vs 1/Width at Selected Training Times")
 pl.xlabel("1 / width")
-pl.ylabel("Standard Deviation of NTK Norm")
+pl.ylabel("Standard Deviation of NTK Norm * (1/Width)")
 pl.grid(True)
 pl.legend()
 
 plot_dir = "plots/ntk_analysis"
 os.makedirs(plot_dir, exist_ok=True)
-plot_filename = os.path.join(plot_dir, "std_ntk_norm_vs_inverse_width_at_times_linear_x.png")
+plot_filename = os.path.join(plot_dir, "std_ntk_norm_times_inverse_width_at_times.png")
 pl.savefig(plot_filename)
 pl.close()
 
