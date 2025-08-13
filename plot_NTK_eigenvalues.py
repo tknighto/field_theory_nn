@@ -124,7 +124,7 @@ import matplotlib.pyplot as pl
 
 
 data_dir = "loss_data"
-widths = range(5, 50, 20) # Use the same widths as in the training code
+widths = range(5, 90, 20) # Use the same widths as in the training code
 
 plot_dir = "plots/ntk_change_plots"
 os.makedirs(plot_dir, exist_ok=True)
@@ -195,7 +195,7 @@ import matplotlib.pyplot as pl
 import torch
 
 data_dir = "loss_data"
-widths = range(5, 50, 20) # Use the same widths as in the training code
+widths = range(5, 90, 20) # Use the same widths as in the training code
 
 plot_dir = "plots/loss_ntk_combined_plots"
 os.makedirs(plot_dir, exist_ok=True)
