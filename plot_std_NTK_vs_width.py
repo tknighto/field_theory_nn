@@ -95,71 +95,66 @@ for filename in os.listdir(data_dir):
 # Sort data by width
 all_widths_data.sort(key=lambda x: x['width'])
 
-# Prepare data for plotting
+# Determine the maximum training time across all widths
+max_training_time = 0
+for data in all_widths_data:
+    if data.get('ntk_record_times_eigenvalues'):
+        max_training_time = max(max_training_time, max(data['ntk_record_times_eigenvalues']))
+
+# Define the four equally spaced training times for plotting
+num_plot_times = 4
+plot_times = np.linspace(0, max_training_time, num_plot_times).tolist()
+
+# Store the mean standard deviation of eigenvalues at plot_times for each width
+mean_std_eigenvalues_at_plot_times_across_widths = [[] for _ in range(num_plot_times)]
 inverse_widths = []
-std_eigenvalues_across_widths = []
-times_with_eigenvalue_data = [] # To store the recorded times for eigenvalues
 
-if all_widths_data:
-    # Assuming the recorded times for eigenvalues are the same for all widths
-    # We will use the times from the first data entry
-    times_with_eigenvalue_data = all_widths_data[0].get('ntk_record_times_eigenvalues', [])
+for data in all_widths_data:
+    width = data['width']
+    inverse_widths.append(1 / width)
+    std_eigenvalue_spectra_times = data.get('std_eigenvalue_spectra_times', [])
+    ntk_record_times_eigenvalues = data.get('ntk_record_times_eigenvalues', [])
 
-    # Initialize lists to hold the standard deviations of eigenvalues for each recorded time, across all widths
-    if times_with_eigenvalue_data:
-        std_eigenvalues_at_times_across_widths = [[] for _ in range(len(times_with_eigenvalue_data))]
+    if std_eigenvalue_spectra_times and ntk_record_times_eigenvalues:
+        # For each plot_time, find the closest recorded time and get the corresponding mean std eigenvalue
+        for i, plot_time in enumerate(plot_times):
+            # Find the index of the closest recorded time
+            closest_time_index = min(range(len(ntk_record_times_eigenvalues)), key=lambda j: abs(ntk_record_times_eigenvalues[j] - plot_time))
 
-        for data in all_widths_data:
-            width = data['width']
-            inverse_widths.append(1 / width)
-            std_eigenvalue_spectra_times = data.get('std_eigenvalue_spectra_times', [])
+            # Get the list of standard deviations for all eigenvalues at this closest time
+            stds_at_closest_time = std_eigenvalue_spectra_times[closest_time_index]
 
-            # Check if the number of recorded times for eigenvalues matches the first entry
-            if len(std_eigenvalue_spectra_times) != len(times_with_eigenvalue_data):
-                print(f"Warning: Number of recorded times for eigenvalues for width {width} is inconsistent. Skipping.")
-                # Append NaN for this width at all times if inconsistent
-                for time_idx in range(len(times_with_eigenvalue_data)):
-                     std_eigenvalues_at_times_across_widths[time_idx].append(np.nan)
-                continue
+            # Calculate the mean of these standard deviations
+            mean_std_at_closest_time = np.mean(stds_at_closest_time) if stds_at_closest_time else np.nan
 
+            mean_std_eigenvalues_at_plot_times_across_widths[i].append(mean_std_at_closest_time)
+    else:
+        # Append NaN if data is missing for this width
+        for i in range(num_plot_times):
+            mean_std_eigenvalues_at_plot_times_across_widths[i].append(np.nan)
 
-            # For each recorded time, calculate the mean of the standard deviations across the eigenvalue spectrum
-            # This aggregates the std of individual eigenvalues at a given time across the ensemble
-            # The request is to plot the "std of the eigenvalues vs 1/width".
-            # The saved `std_eigenvalue_spectra_times` is a list of lists: [time_1_stds, time_2_stds, ...].
-            # Each inner list is the standard deviation of each eigenvalue across the ensemble at that specific time.
-            # To plot "std of the eigenvalues vs 1/width", we need a single value representing the std of eigenvalues at each time for each width.
-            # A reasonable approach is to take the mean or median of the `std_eigenvalue_spectra_times` list for each time. Let's use the mean.
-
-            mean_std_eigenvalues_at_times = [np.mean(stds) if stds else np.nan for stds in std_eigenvalue_spectra_times]
-
-            for time_idx in range(len(times_with_eigenvalue_data)):
-                std_eigenvalues_at_times_across_widths[time_idx].append(mean_std_eigenvalues_at_times[time_idx])
 
 # Plotting
-if inverse_widths and std_eigenvalues_at_times_across_widths:
+if inverse_widths and mean_std_eigenvalues_at_plot_times_across_widths:
     pl.figure(figsize=(10, 6))
 
-    colors = ['blue', 'red', 'green', 'purple', 'orange', 'brown', 'pink', 'gray', 'olive', 'cyan'] # More colors if needed
+    colors = ['blue', 'red', 'green', 'purple']
+    labels = [f'Time ≈ {plot_times[i]:.2f}' for i in range(num_plot_times)]
 
-    for i, time in enumerate(times_with_eigenvalue_data):
-        if i < len(colors):
-            # Multiply std by inverse width and square before plotting
-            pl.plot(inverse_widths, (np.array(std_eigenvalues_at_times_across_widths[i]) * np.array(inverse_widths))**2, marker='o', linestyle='-', color=colors[i], label=f'Time ≈ {time:.2f}')
-        else:
-            # Use default color if not enough colors are defined
-            pl.plot(inverse_widths, (np.array(std_eigenvalues_at_times_across_widths[i]) * np.array(inverse_widths))**2, marker='o', linestyle='-', label=f'Time ≈ {time:.2f}')
+    for i in range(num_plot_times):
+        # Multiply mean std by inverse width and square before plotting
+        pl.plot(inverse_widths, (np.array(mean_std_eigenvalues_at_plot_times_across_widths[i]) * np.array(inverse_widths))**2, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
 
-    pl.title("Standard Deviation of NTK Eigenvalues Squared vs 1/Width at Selected Training Times")
+    pl.title("Mean Standard Deviation of NTK Eigenvalues * (1/Width) Squared vs 1/Width at Selected Training Times")
     pl.xlabel("1 / width")
-    pl.ylabel("(Standard Deviation of NTK Eigenvalues * (1/Width))^2")
+    pl.ylabel("(Mean Standard Deviation of NTK Eigenvalues * (1/Width))^2")
     pl.grid(True)
     pl.legend()
 
     plot_dir = "plots/ntk_analysis"
     os.makedirs(plot_dir, exist_ok=True)
-    plot_filename = os.path.join(plot_dir, "mean_std_eigenvalues_times_inverse_width_squared_at_times.png")
+    plot_filename = os.path.join(plot_dir, "mean_std_eigenvalues_times_inverse_width_squared_at_selected_times.png")
     pl.savefig(plot_filename)
     pl.close()
 
