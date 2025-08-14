@@ -1,7 +1,8 @@
 import torch.func # Keep import just in case needed elsewhere, although not for this NTK method
 import torch.autograd as autograd # Import autograd for gradient computation
+import numpy as np # Import numpy for bootstrapping
 
-def compute_ntk(model, x):
+def compute_ntk(model, x, lr):
     """
     Computes the Neural Tangent Kernel (NTK) matrix for a given model and input data
     by computing gradients individually.
@@ -74,8 +75,8 @@ def compute_ntk(model, x):
     J = torch.cat(jacobians_list, dim=0)
 
     # Compute the NTK matrix: J @ J^T
-    ntk_matrix = J @ J.T # Shape (batch_size * output_dim, batch_size * output_dim) or (batch_size, batch_size) if output_dim == 1
-
+    ntk_matrix_unscaled = J @ J.T # Shape (batch_size * output_dim, batch_size * output_dim) or (batch_size, batch_size) if output_dim == 1
+    ntk_matrix = ntk_matrix_unscaled*lr # Scale by learning rate
     return ntk_matrix
 
 def compute_ntk_properties(ntk_matrix):
@@ -97,6 +98,30 @@ def compute_ntk_properties(ntk_matrix):
     eigenvalues = torch.linalg.eigvals(ntk_matrix)
 
     return frobenius_norm, eigenvalues
+
+def bootstrap_std_error(data, num_bootstrap_samples=1000):
+    """
+    Computes the standard error of the standard deviation of the data using bootstrapping.
+
+    Args:
+        data: A list or numpy array of data points.
+        num_bootstrap_samples: The number of bootstrap samples to generate.
+
+    Returns:
+        The estimated standard error of the standard deviation (float).
+    """
+    data = np.array(data)
+    n = len(data)
+    if n == 0:
+        return np.nan # Return NaN if there is no data
+
+    bootstrap_stds = []
+    for _ in range(num_bootstrap_samples):
+        bootstrap_sample = np.random.choice(data, size=n, replace=True)
+        bootstrap_stds.append(np.std(bootstrap_sample))
+
+    return np.std(bootstrap_stds)
+
 
 import torch.optim as optim
 import time
@@ -258,7 +283,7 @@ def train_network(model, x_train_split, y_train_split, x_test_split, y_test_spli
              print(f"Computing NTK at training time {current_training_time:.4f} (Epoch {epoch})...")
              # Ensure model is on CPU for NTK computation if compute_ntk expects CPU tensors
              model.cpu()
-             ntk_matrix = compute_ntk(model, x_train_split.cpu()) # Pass CPU data for NTK
+             ntk_matrix = compute_ntk(model, x_train_split.cpu(), learning_rate) # Pass CPU data for NTK
              ntk_norm, ntk_eigenvalues = compute_ntk_properties(ntk_matrix)
 
              ntk_norms_epochs.append(ntk_norm)
@@ -411,28 +436,39 @@ def train_model(width):
     std_1000_epoch_test_losses = np.std(all_ensemble_1000_epoch_test_losses_np, axis=0)
 
     # Calculate mean and std for time-dependent NTK norms across the ensemble
+    mean_ntk_norms = []
+    std_ntk_norms = []
+    std_error_std_ntk_norms = [] # List to store the standard error of the standard deviation of NTK norms
+    recorded_ntk_times = [] # Ensure this is consistent across all networks for averaging
+
     if all_ensemble_ntk_norms:
         # Before calculating mean/std, ensure all lists within all_ensemble_ntk_norms have the same length
         min_norm_epochs = min(len(norm_list) for norm_list in all_ensemble_ntk_norms)
         if not all(len(norm_list) == min_norm_epochs for norm_list in all_ensemble_ntk_norms):
-             print(f"Warning: NTK norms lists for width {width} have inconsistent lengths across networks. Truncating to minimum length ({min_norm_epochs}).")
+             print(f"Warning: NTK norms lists for width {width} have inconsistent time counts across networks. Truncating to minimum length ({min_norm_epochs}).")
              all_ensemble_ntk_norms = [norm_list[:min_norm_epochs] for norm_list in all_ensemble_ntk_norms]
              ntk_record_times_list = [times_list[:min_norm_epochs] for times_list in ntk_record_times_list]
 
 
-        mean_ntk_norms = np.mean(np.array(all_ensemble_ntk_norms), axis=0)
-        std_ntk_norms = np.std(np.array(all_ensemble_ntk_norms), axis=0)
-        recorded_ntk_times = ntk_record_times_list[0][:min_norm_epochs] # Use the truncated time list
-    else:
-        mean_ntk_norms = None
-        std_ntk_norms = None
-        recorded_ntk_times = None
+        # Calculate mean and std for each recorded time point across the ensemble
+        ntk_norms_at_times = np.array(all_ensemble_ntk_norms) # Shape (ENSEMBLE_SIZE, min_norm_epochs)
 
+        mean_ntk_norms = np.mean(ntk_norms_at_times, axis=0).tolist()
+        std_ntk_norms = np.std(ntk_norms_at_times, axis=0).tolist()
+        recorded_ntk_times = ntk_record_times_list[0][:min_norm_epochs] # Use the truncated time list
+
+        # Compute standard error of the standard deviation for each recorded time
+        for time_idx in range(min_norm_epochs):
+            norms_at_this_time = ntk_norms_at_times[:, time_idx]
+            se_std = bootstrap_std_error(norms_at_this_time)
+            std_error_std_ntk_norms.append(se_std)
 
     # Process NTK eigenvalues across the ensemble for each recorded time
     # Calculate mean and std of the eigenvalue spectrum at each recorded epoch across networks
     mean_eigenvalue_spectra = []
     std_eigenvalue_spectra = []
+    variance_eigenvalue_spectra = [] # List to store variance of eigenvalue spectra
+    std_error_std_eigenvalues = [] # List to store standard error of the standard deviation of eigenvalues
     times_with_eigenvalue_data = [] # Track times where we have valid eigenvalue data
 
     if all_ensemble_ntk_eigenvalues:
@@ -473,11 +509,16 @@ def train_model(width):
                  # Calculate mean and std deviation of the eigenvalue spectrum across the ensemble
                  mean_spectrum = np.mean(stacked_eigenvalues, axis=0).tolist() # Mean over ensemble for each eigenvalue
                  std_spectrum = np.std(stacked_eigenvalues, axis=0).tolist() # Std dev over ensemble for each eigenvalue
+                 variance_spectrum = np.var(stacked_eigenvalues, axis=0).tolist() # Variance over ensemble for each eigenvalue
 
                  mean_eigenvalue_spectra.append(mean_spectrum)
                  std_eigenvalue_spectra.append(std_spectrum)
+                 variance_eigenvalue_spectra.append(variance_spectrum)
                  times_with_eigenvalue_data.append(recorded_ntk_times[time_idx]) # Record the time
 
+                 # Compute standard error of the standard deviation for each eigenvalue at this time
+                 std_errors_at_time = [bootstrap_std_error(stacked_eigenvalues[:, eig_idx]) for eig_idx in range(stacked_eigenvalues.shape[1])]
+                 std_error_std_eigenvalues.append(std_errors_at_time)
 
             else:
                  print(f"Warning: Skipping time {recorded_ntk_times[time_idx]:.4f} for width {width} due to incomplete or missing eigenvalue data across ensemble.")
@@ -538,11 +579,14 @@ def train_model(width):
         'std_1000_epoch_test_losses': std_1000_epoch_test_losses, # Corrected std_test_losses_1000_epochs
         'width': width,
         'epochs_recorded_at': [e for e in range(0, NUM_EPOCHS, 1000)], # Epochs for 1000-epoch losses
-        'ntk_norms_times': mean_ntk_norms.tolist() if mean_ntk_norms is not None else None, # Save mean NTK norms over times
-        'std_ntk_norms_times': std_ntk_norms.tolist() if std_ntk_norms is not None else None, # Save std NTK norms over times
-        'ntk_record_times_norms': recorded_ntk_times, # Save the list of times for norms
+        'ntk_norms_times': mean_ntk_norms, # Save mean NTK norms over times
+        'std_ntk_norms_times': std_ntk_norms, # Save std NTK norms over times
+        'std_error_std_ntk_norms_times': std_error_std_ntk_norms, # Save standard error of the standard deviation of NTK norms over times
+        'ntk_record_times_norms': recorded_ntk_times, # Save the list of times for norms and their std errors
         'mean_eigenvalue_spectra_times': mean_eigenvalue_spectra, # Save mean eigenvalue spectra over times
         'std_eigenvalue_spectra_times': std_eigenvalue_spectra, # Save std eigenvalue spectra over times
+        'variance_eigenvalue_spectra_times': variance_eigenvalue_spectra, # Save variance eigenvalue spectra over times
+        'std_error_std_eigenvalues_times': std_error_std_eigenvalues, # Save standard error of the standard deviation of eigenvalues over times
         'ntk_record_times_eigenvalues': times_with_eigenvalue_data, # Save the list of times for eigenvalues
         'mean_ntk_matrices_times': mean_ntk_matrices, # Save mean NTK matrices over times
         'std_ntk_matrices_times': std_ntk_matrices, # Save std NTK matrices over times
@@ -584,7 +628,7 @@ print("Threaded execution finished.")
 # and the processing here needs to extract it.
 
 # Let's update train_model_thread to capture the new return values from train_model
-# The current train_model returns 8 items. The train_model_thread expects 8 + 1 (width) = 9 items.
+# The current train_model returns 11 items. The train_model_thread expects 11 + 1 (width) = 12 items.
 # The train_model function now returns 11 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist()
 # The train_model_thread adds the width. So the results tuple will have 12 items.
 # This seems consistent with the existing valid_results processing logic.
