@@ -146,9 +146,9 @@ if inverse_widths and mean_std_eigenvalues_at_plot_times_across_widths:
         pl.plot(inverse_widths, (np.array(mean_std_eigenvalues_at_plot_times_across_widths[i]))**2, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
 
-    pl.title("Mean Standard Deviation of NTK Eigenvalues Squared vs 1/Width at Selected Training Times")
+    pl.title("Mean Variance of NTK Eigenvalues vs 1/Width at Selected Training Times")
     pl.xlabel("1 / width")
-    pl.ylabel("(Mean Standard Deviation of NTK Eigenvalues * (1/Width))^2")
+    pl.ylabel("(Mean Variance of NTK Eigenvalues")
     pl.grid(True)
     pl.legend()
 
@@ -382,7 +382,6 @@ if inverse_widths and std_ntk_norms_at_plot_times_across_widths:
     pl.ylabel("Variance of NTK Norm")
     pl.grid(True)
     pl.legend()
-    pl.yscale('log') # Use log scale for better visualization
 
     plot_dir = "plots/ntk_analysis"
     os.makedirs(plot_dir, exist_ok=True)
