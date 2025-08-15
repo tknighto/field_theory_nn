@@ -59,7 +59,7 @@ for i in range(num_plot_times):
     # Convert the list to a NumPy array before multiplication
     std_devs = np.array(std_ntk_norms_at_plot_times_across_widths[i])
     inverse_widths_np = np.array(inverse_widths) # Convert inverse_widths to numpy array for element-wise multiplication
-    pl.plot(inverse_widths_np, std_devs * inverse_widths_np, marker='o', linestyle='-', color=colors[i], label=labels[i])
+    pl.plot(inverse_widths_np, std_devs, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
 
 pl.title("Standard Deviation of NTK Norm * (1/Width) vs 1/Width at Selected Training Times")
@@ -142,11 +142,11 @@ if inverse_widths and mean_std_eigenvalues_at_plot_times_across_widths:
     labels = [f'Time ≈ {plot_times[i]:.2f}' for i in range(num_plot_times)]
 
     for i in range(num_plot_times):
-        # Multiply mean std by inverse width and square before plotting
-        pl.plot(inverse_widths, (np.array(mean_std_eigenvalues_at_plot_times_across_widths[i]) * np.array(inverse_widths))**2, marker='o', linestyle='-', color=colors[i], label=labels[i])
+        # Square mean std before plotting
+        pl.plot(inverse_widths, (np.array(mean_std_eigenvalues_at_plot_times_across_widths[i]))**2, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
 
-    pl.title("Mean Standard Deviation of NTK Eigenvalues * (1/Width) Squared vs 1/Width at Selected Training Times")
+    pl.title("Mean Standard Deviation of NTK Eigenvalues Squared vs 1/Width at Selected Training Times")
     pl.xlabel("1 / width")
     pl.ylabel("(Mean Standard Deviation of NTK Eigenvalues * (1/Width))^2")
     pl.grid(True)
