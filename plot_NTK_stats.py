@@ -33,15 +33,15 @@ for width in widths:
 
     # Plot the mean NTK norm
     inverse_width = 1 / width
-    pl.plot(ntk_record_times, mean_ntk_norms*np.array(inverse_width), label=f'Width {width}')
+    pl.plot(ntk_record_times, mean_ntk_norms, label=f'Width {width}')
 
     # Add shaded area for standard deviation if available and lengths match
     if std_ntk_norms is not None and len(std_ntk_norms) == len(mean_ntk_norms):
         mean_ntk_norms_np = np.array(mean_ntk_norms)
         std_ntk_norms_np = np.array(std_ntk_norms)
         # Ensure lower bound is non-negative for log scale plotting if needed later
-        lower_bound = np.maximum(0, mean_ntk_norms_np - std_ntk_norms_np)*np.array(inverse_width)
-        pl.fill_between(ntk_record_times, lower_bound, np.array(inverse_width)*(mean_ntk_norms_np + std_ntk_norms_np), alpha=0.3)
+        lower_bound = np.maximum(0, mean_ntk_norms_np - std_ntk_norms_np)
+        pl.fill_between(ntk_record_times, lower_bound, (mean_ntk_norms_np + std_ntk_norms_np), alpha=0.3)
         print(f"Added standard deviation fill for width {width}.")
     elif std_ntk_norms is not None:
         print(f"Warning: Length mismatch between mean and std NTK norms for width {width}. Skipping std fill.")
