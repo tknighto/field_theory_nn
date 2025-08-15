@@ -371,15 +371,15 @@ if inverse_widths and std_ntk_norms_at_plot_times_across_widths:
         inverse_widths_np = np.array(inverse_widths)
 
         # Plot the standard deviations
-        pl.plot(inverse_widths_np, std_devs, marker='o', linestyle='-', color=colors[i], label=labels[i])
+        pl.plot(inverse_widths_np, std_devs**2, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
         # Add error bars
-        pl.errorbar(inverse_widths_np, std_devs, yerr=std_errors, fmt='none', capsize=3, color=colors[i], alpha=0.5)
+        pl.errorbar(inverse_widths_np, std_devs**2, yerr=std_errors, fmt='none', capsize=3, color=colors[i], alpha=0.5)
 
 
-    pl.title("Standard Deviation of NTK Norm vs 1/Width with Std Error at Selected Training Times")
+    pl.title("Variance of NTK Norm vs 1/Width with Std Error at Selected Training Times")
     pl.xlabel("1 / width")
-    pl.ylabel("Standard Deviation of NTK Norm")
+    pl.ylabel("Variance of NTK Norm")
     pl.grid(True)
     pl.legend()
     pl.yscale('log') # Use log scale for better visualization
