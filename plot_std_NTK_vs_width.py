@@ -62,9 +62,9 @@ for i in range(num_plot_times):
     pl.plot(inverse_widths_np, std_devs**2, marker='o', linestyle='-', color=colors[i], label=labels[i])
 
 
-pl.title("Variance of NTK Norm * (1/Width) vs 1/Width at Selected Training Times")
+pl.title("Variance of NTK Norm vs 1/Width at Selected Training Times")
 pl.xlabel("1 / width")
-pl.ylabel("Variance of NTK Norm * (1/Width)")
+pl.ylabel("Variance of NTK Norm ")
 pl.grid(True)
 pl.legend()
 
