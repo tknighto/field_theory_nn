@@ -513,7 +513,6 @@ if inverse_widths and std_top3_eigenvalues_at_plot_times_across_widths:
     pl.ylabel("Mean Standard Deviation of Top 3 NTK Eigenvalues") # Label updated
     pl.grid(True)
     pl.legend()
-    pl.yscale('log') # Use log scale for better visualization
 
     plot_dir = "plots/ntk_analysis"
     os.makedirs(plot_dir, exist_ok=True)
