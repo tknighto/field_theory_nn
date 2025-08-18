@@ -392,3 +392,135 @@ if inverse_widths and std_ntk_norms_at_plot_times_across_widths:
     print(f"Plot saved to {plot_filename}")
 else:
     print("No valid data to plot.")
+
+import pickle
+import os
+import matplotlib.pyplot as pl
+import numpy as np
+
+data_dir = "loss_data"
+all_widths_data = []
+
+# Load data for all widths
+for filename in os.listdir(data_dir):
+    if filename.endswith(".pkl"):
+        filepath = os.path.join(data_dir, filename)
+        try:
+            with open(filepath, 'rb') as f:
+                data = pickle.load(f)
+                all_widths_data.append(data)
+        except Exception as e:
+            print(f"Error loading data from {filepath}: {e}")
+
+# Sort data by width
+all_widths_data.sort(key=lambda x: x.get('width', float('inf'))) # Use .get with a default for safety
+
+# Determine the maximum training time across all widths
+max_training_time = 0
+for data in all_widths_data:
+    if data.get('ntk_record_times_eigenvalues'):
+        max_training_time = max(max_training_time, max(data['ntk_record_times_eigenvalues']))
+
+# Define the four equally spaced training times for plotting
+num_plot_times = 4
+plot_times = np.linspace(0, max_training_time, num_plot_times).tolist()
+
+# Store the standard deviation of top 3 eigenvalues and propagated standard errors at plot_times for each width
+std_top3_eigenvalues_at_plot_times_across_widths = [[] for _ in range(num_plot_times)]
+std_error_std_top3_eigenvalues_at_plot_times_across_widths = [[] for _ in range(num_plot_times)] # Standard error of the standard deviation
+inverse_widths = []
+
+for data in all_widths_data:
+    width = data.get('width')
+    if width is None:
+        print(f"Skipping data entry with no 'width' key: {data}")
+        continue
+    inverse_widths.append(1 / width)
+
+    std_eigenvalue_spectra_times = data.get('std_eigenvalue_spectra_times', [])
+    std_error_std_eigenvalues_times = data.get('std_error_std_eigenvalues_times', [])
+    ntk_record_times_eigenvalues = data.get('ntk_record_times_eigenvalues', [])
+
+
+    if std_eigenvalue_spectra_times and ntk_record_times_eigenvalues and std_error_std_eigenvalues_times:
+        # For each plot_time, find the closest recorded time and get the corresponding std and std error for the top 3 eigenvalues
+        for i, plot_time in enumerate(plot_times):
+            # Find the index of the closest recorded time
+            closest_time_index = min(range(len(ntk_record_times_eigenvalues)), key=lambda j: abs(ntk_record_times_eigenvalues[j] - plot_time))
+
+            # Get the list of standard deviations for all eigenvalues at this closest time
+            stds_at_closest_time = std_eigenvalue_spectra_times[closest_time_index]
+
+            # Get the list of standard errors for the standard deviations of all eigenvalues at this closest time
+            std_errors_std_at_closest_time = std_error_std_eigenvalues_times[closest_time_index]
+
+
+            if stds_at_closest_time and std_errors_std_at_closest_time:
+                # Assuming eigenvalues are sorted in descending order of magnitude for standard deviation
+                # Take the top 3 standard deviations and their corresponding standard errors
+                top3_stds = stds_at_closest_time[:3]
+                top3_std_errors_std = std_errors_std_at_closest_time[:3]
+
+
+                # Calculate the mean of the top 3 standard deviations
+                mean_top3_std = np.mean(top3_stds)
+
+                # Calculate the propagated standard error for the mean of the top 3 standard deviations
+                # Standard error of the mean of a sample is std / sqrt(n)
+                # Here, the sample is the top 3 standard deviations, and the "error" on each is its standard error of the standard deviation.
+                # A simple approximation for the standard error of the mean of these standard deviations would be the standard deviation of the top 3 standard errors of standard deviation.
+                # Let's use the standard deviation of the top 3 standard errors of the standard deviation as the error bar.
+                propagated_std_error = np.std(top3_std_errors_std) if len(top3_std_errors_std) > 1 else (top3_std_errors_std[0] if top3_std_errors_std else np.nan)
+
+
+                std_top3_eigenvalues_at_plot_times_across_widths[i].append(mean_top3_std)
+                std_error_std_top3_eigenvalues_at_plot_times_across_widths[i].append(propagated_std_error)
+
+            else:
+                 # Append NaN if data is missing for this width and time
+                 std_top3_eigenvalues_at_plot_times_across_widths[i].append(np.nan)
+                 std_error_std_top3_eigenvalues_at_plot_times_across_widths[i].append(np.nan)
+
+    else:
+        # Append NaN if data is missing for this width
+        for i in range(num_plot_times):
+            std_top3_eigenvalues_at_plot_times_across_widths[i].append(np.nan)
+            std_error_std_top3_eigenvalues_at_plot_times_across_widths[i].append(np.nan)
+
+
+# Plotting
+if inverse_widths and std_top3_eigenvalues_at_plot_times_across_widths:
+    pl.figure(figsize=(10, 6))
+
+    colors = ['blue', 'red', 'green', 'purple']
+    labels = [f'Time ≈ {plot_times[i]:.2f}' for i in range(num_plot_times)]
+
+    for i in range(num_plot_times):
+        # Convert lists to NumPy arrays
+        mean_std_devs = np.array(std_top3_eigenvalues_at_plot_times_across_widths[i])
+        propagated_errors = np.array(std_error_std_top3_eigenvalues_at_plot_times_across_widths[i])
+        inverse_widths_np = np.array(inverse_widths)
+
+        # Plot the mean standard deviations of top 3 eigenvalues
+        pl.plot(inverse_widths_np, mean_std_devs, marker='o', linestyle='-', color=colors[i], label=labels[i])
+
+        # Add error bars using the propagated error
+        pl.errorbar(inverse_widths_np, mean_std_devs, yerr=propagated_errors, fmt='none', capsize=3, color=colors[i], alpha=0.5)
+
+
+    pl.title("Mean Standard Deviation of Top 3 NTK Eigenvalues vs 1/Width with Propagated Std Error at Selected Training Times")
+    pl.xlabel("1 / width")
+    pl.ylabel("Mean Standard Deviation of Top 3 NTK Eigenvalues") # Label updated
+    pl.grid(True)
+    pl.legend()
+    pl.yscale('log') # Use log scale for better visualization
+
+    plot_dir = "plots/ntk_analysis"
+    os.makedirs(plot_dir, exist_ok=True)
+    plot_filename = os.path.join(plot_dir, "mean_std_top3_eigenvalues_with_propagated_std_error_at_selected_times.png")
+    pl.savefig(plot_filename)
+    pl.close()
+
+    print(f"Plot saved to {plot_filename}")
+else:
+    print("No valid data to plot.")
