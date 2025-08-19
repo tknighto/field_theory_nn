@@ -62,7 +62,7 @@ import os
 import numpy as np
 
 data_dir = "loss_data"
-widths = range(5, 50, 20) # Use the same widths as in the training code
+widths = [1,5,25] # Use the same widths as in the training code
 
 print("Checking standard deviation data for potential issues...")
 
