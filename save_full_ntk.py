@@ -91,6 +91,7 @@ def compute_ntk_properties(ntk_matrix):
         A tuple containing:
             - frobenius_norm: The Frobenius norm of the NTK matrix (float).
             - eigenvalues: The eigenvalues of the NTK matrix (torch.Tensor).
+            - trace: The trace of the NTK matrix (float).
     """
     # Calculate the Frobenius norm
     frobenius_norm = torch.linalg.norm(ntk_matrix, ord='fro').item()
@@ -98,7 +99,10 @@ def compute_ntk_properties(ntk_matrix):
     # Compute the eigenvalues
     eigenvalues = torch.linalg.eigvals(ntk_matrix)
 
-    return frobenius_norm, eigenvalues
+    # Compute the trace
+    trace = torch.trace(ntk_matrix).item()
+
+    return frobenius_norm, eigenvalues, trace
 
 def bootstrap_std_error(data, num_bootstrap_samples=1000):
     """
@@ -170,26 +174,29 @@ results_lock = threading.Lock()
 def train_model_thread(width, results_list):
     print(f"Starting training for width: {width} in thread.")
     try:
-        # train_model now returns 15 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, losses_1000_epochs, test_losses_1000_epochs, mean_ntk_norms, std_ntk_norms, std_error_std_ntk_norms, recorded_ntk_times, all_ensemble_train_losses, all_ensemble_training_times, mean_eigenvalue_spectra, std_eigenvalue_spectra, variance_eigenvalue_spectra, std_error_std_eigenvalues, times_with_eigenvalue_data, mean_ntk_matrices, std_ntk_matrices, times_with_matrix_data, all_ensemble_outputs, variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry
+        # train_model now returns 16 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, losses_1000_epochs, test_losses_1000_epochs, mean_ntk_norms, std_ntk_norms, std_error_std_ntk_norms, recorded_ntk_times, all_ensemble_train_losses, all_ensemble_training_times, mean_eigenvalue_spectra, std_eigenvalue_spectra, variance_eigenvalue_spectra, std_error_std_eigenvalues, times_with_eigenvalue_data, mean_ntk_matrices, std_ntk_matrices, times_with_matrix_data, all_ensemble_outputs, variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry, mean_ntk_traces, std_ntk_traces, std_error_std_ntk_traces, ntk_record_times_traces
         (mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss,
          mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses,
          std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, all_ensemble_outputs,
-         variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry) = train_model(width) # Adjusted to unpack 14 items
+         variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry,
+         mean_ntk_traces, std_ntk_traces, std_error_std_ntk_traces, ntk_record_times_traces) = train_model(width) # Adjusted to unpack 18 items
+
 
         print(f"Finished training for width: {width} in thread.")
         with results_lock:
-            # Store all returned values along with the width (14 items + 1 width = 15 items)
+            # Store all returned values along with the width (18 items + 1 width = 19 items)
             results_list.append((mean_interval_losses, std_interval_losses, mean_final_loss,
                                 std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses,
                                 mean_1000_epoch_test_losses, std_1000_epoch_test_losses,
                                 all_ensemble_train_losses, all_ensemble_training_times, all_ensemble_outputs,
-                                variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry, width)) # Adjusted to store 15 items
+                                variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry,
+                                mean_ntk_traces, std_ntk_traces, std_error_std_ntk_traces, ntk_record_times_traces, width)) # Adjusted to store 19 items
     except Exception as e:
         print(f"Error training for width {width}: {e}")
         import traceback
         traceback.print_exc()
         with results_lock:
-            results_list.append((None, None, None, None, None, None, None, None, None, None, None, None, None, None, width)) # Ensure 15 None values + width
+             results_list.append((None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, width)) # Ensure 18 None values + width
 
 
 # Define the train_network function with 1000 epoch loss recording and time-dependent NTK computation
@@ -218,6 +225,7 @@ def train_network(model, x_train_split, y_train_split, x_test_split, y_test_spli
     ntk_norms_epochs = [] # List to store NTK norms at recorded epochs
     ntk_eigenvalues_epochs = [] # List to store NTK eigenvalues (as lists) at recorded epochs
     ntk_matrices_epochs = [] # List to store NTK matrices at recorded epochs
+    ntk_traces_epochs = [] # List to store NTK traces at recorded epochs
     ntk_record_times = [] # List to store the training time when NTK is recorded
     training_times = [] # List to store training time for each epoch
     first_ntk_entries_time_dependent = [] # List to store the first NTK entry at each recorded time
@@ -289,11 +297,12 @@ def train_network(model, x_train_split, y_train_split, x_test_split, y_test_spli
              # Ensure model is on CPU for NTK computation if compute_ntk expects CPU tensors
              model.cpu()
              ntk_matrix = compute_ntk(model, x_train_split.cpu(), learning_rate) # Pass CPU data for NTK
-             ntk_norm, ntk_eigenvalues = compute_ntk_properties(ntk_matrix)
+             ntk_norm, ntk_eigenvalues, ntk_trace = compute_ntk_properties(ntk_matrix)
 
              ntk_norms_epochs.append(ntk_norm)
              ntk_eigenvalues_epochs.append(ntk_eigenvalues.tolist()) # Convert eigenvalues to list for saving
              ntk_matrices_epochs.append(ntk_matrix.tolist()) # Save the full NTK matrix as a list of lists
+             ntk_traces_epochs.append(ntk_trace) # Append the NTK trace
              ntk_record_times.append(current_training_time) # Record the training time
 
              # Store the first NTK entry at this recorded time
@@ -315,8 +324,8 @@ def train_network(model, x_train_split, y_train_split, x_test_split, y_test_spli
             print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {loss.item():.4f}, Test Loss: {test_loss.item():.4f}")
 
 
-    # Return the final training loss and other recorded data, including training times and time-dependent first NTK entries
-    return model, interval_losses, train_losses[-1], losses_1000_epochs, test_losses_1000_epochs, ntk_norms_epochs, ntk_eigenvalues_epochs, ntk_matrices_epochs, ntk_record_times, train_losses, training_times, first_ntk_entries_time_dependent
+    # Return the final training loss and other recorded data, including training times, time-dependent first NTK entries, and NTK traces
+    return model, interval_losses, train_losses[-1], losses_1000_epochs, test_losses_1000_epochs, ntk_norms_epochs, ntk_eigenvalues_epochs, ntk_matrices_epochs, ntk_record_times, train_losses, training_times, first_ntk_entries_time_dependent, ntk_traces_epochs
 
 
 # Update train_model to collect and save 1000-epoch losses and time-dependent NTK properties, and calculate mean/std of final losses
@@ -325,7 +334,7 @@ def train_model(width):
     print(f"Using device: {device}")
     print(mp.cpu_count())
 
-    NUM_EPOCHS = 10000 * width
+    NUM_EPOCHS = 20000 * width
     LEARNING_RATE = 0.15 / width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
@@ -370,7 +379,7 @@ def train_model(width):
     # print(f"Computing NTK at initialization for width: {width}...")
     # init_ntk_matrix = compute_ntk(init_ntk_model, x_train_split.to(device))
     # print(f"Finished computing NTK at initialization for width: {width}.")
-    # init_ntk_norm, init_ntk_eigenvalues = compute_ntk_properties(init_ntk_matrix)
+    # init_ntk_norm, init_ntk_eigenvalues, init_ntk_trace = compute_ntk_properties(init_ntk_matrix) # Added init_ntk_trace
     # print(f"Finished computing NTK properties at initialization for width: {width}.")
     # --- End NTK at Initialization ---
 
@@ -383,6 +392,7 @@ def train_model(width):
     all_ensemble_ntk_norms = [] # To store time-dependent NTK norms for the ensemble
     all_ensemble_ntk_eigenvalues = [] # To store time-dependent NTK eigenvalues for the ensemble
     all_ensemble_ntk_matrices = [] # To store time-dependent NTK matrices for the ensemble
+    all_ensemble_ntk_traces = [] # To store time-dependent NTK traces for the ensemble
     ntk_record_times_list = [] # To store the list of training times where NTK was recorded
     all_ensemble_train_losses = [] # To store individual training loss trajectories
     all_ensemble_training_times = [] # To store individual training time trajectories
@@ -400,8 +410,8 @@ def train_model(width):
         test_weights = torch.abs(y_test_split) + 1e-6
         test_weights = test_weights / test_weights.sum()
 
-        # train_network returns time-dependent first NTK entries
-        trained_model, interval_losses, final_loss, losses_1000_epochs, test_losses_1000_epochs, ntk_norms_epochs, ntk_eigenvalues_epochs, ntk_matrices_epochs, ntk_record_times, train_losses_individual, training_times_individual, first_ntk_entries_time_dependent = train_network(model, x_train_split, y_train_split, x_test_split, y_test_split, LEARNING_RATE, NUM_EPOCHS, device, weights)
+        # train_network returns time-dependent first NTK entries and NTK traces
+        trained_model, interval_losses, final_loss, losses_1000_epochs, test_losses_1000_epochs, ntk_norms_epochs, ntk_eigenvalues_epochs, ntk_matrices_epochs, ntk_record_times, train_losses_individual, training_times_individual, first_ntk_entries_time_dependent, ntk_traces_epochs = train_network(model, x_train_split, y_train_split, x_test_split, y_test_split, LEARNING_RATE, NUM_EPOCHS, device, weights) # Added ntk_traces_epochs
 
         ensemble_interval_losses.append(interval_losses)
         all_ensemble_final_losses.append(final_loss) # Append final loss for this network
@@ -410,6 +420,7 @@ def train_model(width):
         all_ensemble_ntk_norms.append(ntk_norms_epochs) # Append time-dependent NTK norms
         all_ensemble_ntk_eigenvalues.append(ntk_eigenvalues_epochs) # Append time-dependent NTK eigenvalues
         all_ensemble_ntk_matrices.append(ntk_matrices_epochs) # Append time-dependent NTK matrices
+        all_ensemble_ntk_traces.append(ntk_traces_epochs) # Append time-dependent NTK traces
         ntk_record_times_list.append(ntk_record_times) # Store the recorded training times list
         all_ensemble_train_losses.append(train_losses_individual) # Append individual training losses
         all_ensemble_training_times.append(training_times_individual) # Append individual training times
@@ -660,6 +671,46 @@ def train_model(width):
                  else:
                       print(f"Warning: Skipping time index {time_idx} for width {width} due to incomplete or missing matrix data across ensemble (time data missing).")
 
+    # Calculate mean and std for time-dependent NTK traces across the ensemble
+    mean_ntk_traces = []
+    std_ntk_traces = []
+    std_error_std_ntk_traces = [] # List to store the standard error of the standard deviation of NTK traces
+    recorded_ntk_times_traces = [] # Ensure this is consistent across all networks for averaging
+
+    if all_ensemble_ntk_traces:
+        # Before calculating mean/std, ensure all lists within all_ensemble_ntk_traces have the same length
+        min_trace_epochs = min(len(trace_list) for trace_list in all_ensemble_ntk_traces)
+        if not all(len(trace_list) == min_trace_epochs for trace_list in all_ensemble_ntk_traces):
+             print(f"Warning: NTK traces lists for width {width} have inconsistent time counts across networks. Truncating to minimum length ({min_trace_epochs}).")
+             all_ensemble_ntk_traces = [trace_list[:min_trace_epochs] for trace_list in all_ensemble_ntk_traces]
+             # Assuming ntk_record_times_list has the same structure and needs similar truncation
+             if ntk_record_times_list:
+                 min_times_len = min(len(times_list) for times_list in ntk_record_times_list)
+                 if min_times_len < min_trace_epochs:
+                      print(f"Warning: NTK record times lists for width {width} have fewer entries than NTK traces. Truncating traces to minimum time length ({min_times_len}).")
+                      min_trace_epochs = min_times_len
+                      all_ensemble_ntk_traces = [trace_list[:min_trace_epochs] for trace_list in all_ensemble_ntk_traces]
+
+                 ntk_record_times_list = [times_list[:min_trace_epochs] for times_list in ntk_record_times_list]
+
+
+        # Calculate mean and std for each recorded time point across the ensemble
+        ntk_traces_at_times = np.array(all_ensemble_ntk_traces) # Shape (ENSEMBLE_SIZE, min_trace_epochs)
+
+        mean_ntk_traces = np.mean(ntk_traces_at_times, axis=0).tolist()
+        std_ntk_traces = np.std(ntk_traces_at_times, axis=0).tolist()
+        if ntk_record_times_list and len(ntk_record_times_list) > 0:
+             recorded_ntk_times_traces = ntk_record_times_list[0][:min_trace_epochs] # Use the truncated time list from the first network
+        else:
+             recorded_ntk_times_traces = []
+
+
+        # Compute standard error of the standard deviation for each recorded time
+        for time_idx in range(min_trace_epochs):
+            traces_at_this_time = ntk_traces_at_times[:, time_idx]
+            se_std = bootstrap_std_error(traces_at_this_time)
+            std_error_std_ntk_traces.append(se_std)
+
 
     data_dir = "loss_data"
     os.makedirs(data_dir, exist_ok=True)
@@ -688,7 +739,11 @@ def train_model(width):
         'all_ensemble_outputs': ensemble_outputs.tolist(), # Save individual ensemble outputs
         'variance_first_ntk_entry_times': variance_first_ntk_entry_times, # Save the time-dependent variance of the first NTK entry
         'std_error_variance_first_ntk_entry_times': std_error_variance_first_ntk_entry_times, # Save the time-dependent standard error of the variance of the first NTK entry
-        'ntk_record_times_first_entry': recorded_ntk_times_first_entry # Save the list of times for the time-dependent first NTK entry variance/SE
+        'ntk_record_times_first_entry': recorded_ntk_times_first_entry, # Save the list of times for the time-dependent first NTK entry variance/SE
+        'mean_ntk_traces_times': mean_ntk_traces, # Save mean NTK traces over times
+        'std_ntk_traces_times': std_ntk_traces, # Save std NTK traces over times
+        'std_error_std_ntk_traces_times': std_error_std_ntk_traces, # Save standard error of the standard deviation of NTK traces over times
+        'ntk_record_times_traces': recorded_ntk_times_traces # Save the list of times for traces and their std errors
     }
     data_filename = os.path.join(data_dir, f"loss_data_width_{width}.pkl")
     with open(data_filename, 'wb') as f:
@@ -697,8 +752,8 @@ def train_model(width):
     print(f"Saved loss data and processed time-dependent NTK properties for width {width} to {data_filename}")
 
 
-    # Return mean/std of final losses and other recorded data, including the time-dependent variance and its standard error of the first NTK entry
-    return mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist(), variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry
+    # Return mean/std of final losses and other recorded data, including the time-dependent variance and its standard error of the first NTK entry and NTK traces
+    return mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist(), variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry, mean_ntk_traces, std_ntk_traces, std_error_std_ntk_traces, recorded_ntk_times_traces # Added trace returns
 
 
 # List of widths to iterate over
@@ -718,21 +773,21 @@ for thread in threads:
 
 print("Threaded execution finished.")
 
-# Process results including time-dependent NTK data and the variance of the first NTK entry
+# Process results including time-dependent NTK data and the variance of the first NTK entry and NTK traces
 # The train_model_thread function needs to be updated to return the new NTK data
 # and the processing here needs to extract it.
 
 # Let's update train_model_thread to capture the new return values from train_model
-# The current train_model returns 14 items. The train_model_thread expects 14 + 1 (width) = 15 items.
-# The train_model function now returns 14 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist(), variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry
-# The train_model_thread adds the width. So the results tuple will have 15 items.
+# The current train_model returns 18 items. The train_model_thread expects 18 + 1 (width) = 19 items.
+# The train_model function now returns 18 items: mean_interval_losses, std_interval_losses, mean_final_loss, std_final_loss, mean_1000_epoch_losses, std_1000_epoch_losses, mean_1000_epoch_test_losses, std_1000_epoch_test_losses, all_ensemble_train_losses, all_ensemble_training_times, ensemble_outputs.tolist(), variance_first_ntk_entry_times, std_error_variance_first_ntk_entry_times, recorded_ntk_times_first_entry, mean_ntk_traces, std_ntk_traces, std_error_std_ntk_traces, recorded_ntk_times_traces
+# The train_model_thread adds the width. So the results tuple will have 19 items.
 # This seems consistent with the existing valid_results processing logic.
 
 
 valid_results = [r for r in results if r[0] is not None]
 
-# Sort by width (index 14, as recorded_ntk_times_first_entry is added before width)
-valid_results.sort(key=lambda x: x[14])
+# Sort by width (index 18, as recorded_ntk_times_traces is added before width)
+valid_results.sort(key=lambda x: x[18])
 
 if valid_results:
     # Assuming mean_interval_losses is the first item (index 0) and has the same length for all valid results
@@ -748,18 +803,31 @@ if valid_results:
         # Lists to store time-dependent variance and standard error of the first NTK entry across widths
         time_dependent_variance_first_ntk_entry_across_widths = {}
         time_dependent_std_error_variance_first_ntk_entry_across_widths = {}
-        recorded_times_across_widths = {}
+        recorded_times_across_widths_first_entry = {}
+
+        # Lists to store time-dependent mean, std, and standard error of the NTK trace across widths
+        time_dependent_mean_ntk_trace_across_widths = {}
+        time_dependent_std_ntk_trace_across_widths = {}
+        time_dependent_std_error_std_ntk_trace_across_widths = {}
+        recorded_times_across_widths_traces = {}
 
 
-        # Update the unpacking in the loop to match the return of train_model_thread (now 15 items)
-        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, all_ensemble_outputs_individual, variance_first_ntk_entry_times_val, std_error_variance_first_ntk_entry_times_val, recorded_ntk_times_first_entry_val, width in valid_results:
+
+        # Update the unpacking in the loop to match the return of train_model_thread (now 19 items)
+        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, all_ensemble_outputs_individual, variance_first_ntk_entry_times_val, std_error_variance_first_ntk_entry_times_val, recorded_ntk_times_first_entry_val, mean_ntk_traces_val, std_ntk_traces_val, std_error_std_ntk_traces_val, recorded_ntk_times_traces_val, width in valid_results: # Added trace values and times
              inverse_widths.append(1 / width)
              widths_list.append(width) # Store the width
 
-             # Store the time-dependent variance, SE, and times for this width
+             # Store the time-dependent variance, SE, and times for this width (First NTK Entry)
              time_dependent_variance_first_ntk_entry_across_widths[width] = variance_first_ntk_entry_times_val
              time_dependent_std_error_variance_first_ntk_entry_across_widths[width] = std_error_variance_first_ntk_entry_times_val
-             recorded_times_across_widths[width] = recorded_ntk_times_first_entry_val
+             recorded_times_across_widths_first_entry[width] = recorded_ntk_times_first_entry_val
+
+             # Store the time-dependent mean, std, SE, and times for this width (NTK Trace)
+             time_dependent_mean_ntk_trace_across_widths[width] = mean_ntk_traces_val
+             time_dependent_std_ntk_trace_across_widths[width] = std_ntk_traces_val
+             time_dependent_std_error_std_ntk_trace_across_widths[width] = std_error_std_ntk_traces_val
+             recorded_times_across_widths_traces[width] = recorded_ntk_times_traces_val
 
 
              for i in range(num_intervals_plotting):
@@ -767,7 +835,7 @@ if valid_results:
                  interval_stds_across_widths[i].append(std_interval[i])
 
 
-        print("Finished collecting interval losses and time-dependent first NTK entry variance/SE across widths for plotting and saving.")
+        print("Finished collecting interval losses and time-dependent NTK properties across widths for plotting and saving.")
 
         final_plot_dir = "plots/final_plots"
         os.makedirs(final_plot_dir, exist_ok=True)
@@ -798,7 +866,7 @@ if valid_results:
         os.makedirs(plot_loss_trajectories_dir, exist_ok=True)
 
         # Since results are sorted by width, iterate through them
-        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, all_ensemble_outputs_individual, variance_first_ntk_entry_times_val, std_error_variance_first_ntk_entry_times_val, recorded_ntk_times_first_entry_val, width in valid_results:
+        for mean_interval, std_interval, mean_final_loss_val, std_final_loss_val, mean_1000_epoch, std_1000_epoch, mean_1000_epoch_test, std_1000_epoch_test, all_ensemble_train_losses_individual, all_ensemble_training_times_individual, all_ensemble_outputs_individual, variance_first_ntk_entry_times_val, std_error_variance_first_ntk_entry_times_val, recorded_ntk_times_first_entry_val, mean_ntk_traces_val, std_ntk_traces_val, std_error_std_ntk_traces_val, recorded_ntk_times_traces_val, width in valid_results: # Added trace values and times
              pl.figure(figsize=(10, 6))
              for i in range(ENSEMBLE_SIZE):
                  pl.plot(all_ensemble_training_times_individual[i], all_ensemble_train_losses_individual[i], label=f'Model {i+1}')
@@ -821,15 +889,15 @@ if valid_results:
         # We need to find the closest recorded time for each width.
         # Let's choose three arbitrary time points for now, e.g., 10, 50, 100.
         # A more robust approach would be to select times based on the available recorded times across widths.
-        target_times = [10.0, 50.0, 100.0] # Example target training times
+        target_times_first_entry = [10.0, 50.0, 100.0] # Example target training times for first entry
 
-        for target_time in target_times:
+        for target_time in target_times_first_entry:
             variance_at_time = []
             std_error_at_time = []
             widths_for_plotting_at_time = []
 
             for width in widths_list:
-                 recorded_times = recorded_times_across_widths.get(width)
+                 recorded_times = recorded_times_across_widths_first_entry.get(width)
                  variances = time_dependent_variance_first_ntk_entry_across_widths.get(width)
                  std_errors = time_dependent_std_error_variance_first_ntk_entry_across_widths.get(width)
 
@@ -865,6 +933,61 @@ if valid_results:
                  print(f"No valid data available to plot Variance of First NTK Entry vs Width at Training Time ~{target_time:.1f}.")
 
         print("\nFinished plotting time-dependent variance of the first NTK entry.")
+
+        # --- Plotting Variance of NTK Trace vs Width at Specific Training Times ---
+        target_times_traces = [10.0, 50.0, 100.0] # Example target training times for traces
+
+        for target_time in target_times_traces:
+            variance_at_time = []
+            std_error_at_time = []
+            widths_for_plotting_at_time = []
+
+            for width in widths_list:
+                 recorded_times = recorded_times_across_widths_traces.get(width)
+                 # We need the variance of the trace, which is the square of the standard deviation of the trace
+                 # The std_ntk_traces_val returned by train_model is the std dev of the trace across the ensemble at each time
+                 stds_of_traces = time_dependent_std_ntk_trace_across_widths.get(width)
+                 std_errors_of_stds_of_traces = time_dependent_std_error_std_ntk_trace_across_widths.get(width)
+
+
+                 if recorded_times and stds_of_traces and std_errors_of_stds_of_traces:
+                      # Find the index of the closest recorded time to the target time
+                      closest_time_index = min(range(len(recorded_times)), key=lambda i: abs(recorded_times[i] - target_time))
+
+                      # Check if the closest time is reasonably close to the target time
+                      if abs(recorded_times[closest_time_index] - target_time) < 10: # Tolerance of 5.0 time units
+                           if closest_time_index < len(stds_of_traces) and closest_time_index < len(std_errors_of_stds_of_traces):
+                                # The variance of the trace at this time is the square of the std dev of the trace at this time
+                                variance_of_trace = stds_of_traces[closest_time_index]**2
+                                variance_at_time.append(variance_of_trace)
+
+                                # The standard error of the variance is approximately 2 * std_dev * std_error_of_std_dev
+                                std_error_of_variance = 2 * stds_of_traces[closest_time_index] * std_errors_of_stds_of_traces[closest_time_index]
+                                std_error_at_time.append(std_error_of_variance)
+
+                                widths_for_plotting_at_time.append(width)
+                           else:
+                                print(f"Warning: Data index mismatch for width {width} at time {target_time} for trace variance/SE. Skipping.")
+                      else:
+                           print(f"Warning: No recorded time close to {target_time:.4f} for width {width} for trace variance/SE. Closest is {recorded_times[closest_time_index]:.4f}. Skipping.")
+
+
+            if widths_for_plotting_at_time:
+                 pl.figure()
+                 pl.errorbar(widths_for_plotting_at_time, variance_at_time, yerr=std_error_at_time, marker='o', linestyle='-', capsize=5, label="Variance with SE")
+                 pl.title(f"Variance of NTK Trace vs Width at Training Time ~{target_time:.1f} with SE")
+                 pl.xlabel("Width")
+                 pl.ylabel("Variance of NTK Trace")
+                 pl.grid(True)
+                 pl.legend()
+                 variance_trace_plot_path = os.path.join(final_plot_dir, f"variance_ntk_trace_vs_width_time_{int(target_time)}_with_se.png")
+                 pl.savefig(variance_trace_plot_path)
+                 pl.close()
+                 print(f"Variance of NTK trace vs Width plot with SE at time ~{target_time:.1f} saved to {variance_trace_plot_path}")
+            else:
+                 print(f"No valid data available to plot Variance of NTK Trace vs Width at Training Time ~{target_time:.1f}.")
+
+        print("\nFinished plotting time-dependent variance of the NTK trace.")
 
 
     else:
