@@ -53,7 +53,7 @@ for width in widths:
                      print(f"Warning: No recorded NTK times found for width {width}. Skipping for all target times.")
 
 
-# Plotting the variance of the first NTK entry vs Width for the two target times on the same plot
+# Plotting the variance of the first NTK entry vs 1/Width for the two target times on the same plot
 pl.figure(figsize=(10, 6))
 
 colors = ['blue', 'red', 'green'] # Define colors for different time points
@@ -61,7 +61,9 @@ markers = ['o', 's', '^'] # Define markers for different time points
 
 for i, target_time in enumerate(target_times):
     if widths_for_plotting_at_times[target_time]:
-        pl.errorbar(widths_for_plotting_at_times[target_time], variance_at_target_times[target_time],
+        # Calculate 1/width for plotting
+        inverse_widths_for_plotting = [1.0 / w for w in widths_for_plotting_at_times[target_time]]
+        pl.errorbar(inverse_widths_for_plotting, variance_at_target_times[target_time],
                     yerr=std_error_at_target_times[target_time],
                     marker=markers[i % len(markers)], linestyle='-', capsize=5,
                     label=f"Time ~{target_time:.1f} with SE", color=colors[i % len(colors)])
@@ -69,15 +71,15 @@ for i, target_time in enumerate(target_times):
         print(f"No valid data available to plot for Training Time ~{target_time:.1f}.")
 
 
-pl.title("Variance of First NTK Entry vs Width at Different Training Times with SE")
-pl.xlabel("Width")
+pl.title("Variance of First NTK Entry vs 1/Width at Different Training Times with SE")
+pl.xlabel("1 / Width")
 pl.ylabel("Variance of First NTK Entry")
 pl.grid(True)
 pl.legend()
 
 # Save the plot
-variance_time_comparison_plot_path = os.path.join(final_plot_dir, "variance_first_ntk_entry_vs_width_time_comparison_with_se.png")
+variance_time_comparison_plot_path = os.path.join(final_plot_dir, "variance_first_ntk_entry_vs_inverse_width_time_comparison_with_se.png")
 pl.savefig(variance_time_comparison_plot_path)
 pl.close()
 
-print(f"Comparison plot of Variance of first NTK entry vs Width with SE at different times saved to {variance_time_comparison_plot_path}")
+print(f"Comparison plot of Variance of first NTK entry vs 1/Width with SE at different times saved to {variance_time_comparison_plot_path}")
