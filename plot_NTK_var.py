@@ -12,7 +12,7 @@ os.makedirs(final_plot_dir, exist_ok=True)
 widths = range(25,90,20)
 
 # Define the two target training times for plotting
-target_times = [0, 500, 1000, 1500]
+target_times = [0, 500, 1000, 1490]
 
 # Dictionaries to store the variance and standard error for each width at each target time
 variance_at_target_times = {time: [] for time in target_times}
