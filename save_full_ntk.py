@@ -1,7 +1,7 @@
 import torch.func # Keep import just in case needed elsewhere, although not for this NTK method
 import torch.autograd as autograd # Import autograd for gradient computation
 import numpy as np # Import numpy for bootstrapping
-
+import math
 def compute_ntk(model, x, lr):
     """
     Computes the Neural Tangent Kernel (NTK) matrix for a given model and input data
@@ -334,7 +334,7 @@ def train_model(width):
     print(f"Using device: {device}")
     print(mp.cpu_count())
 
-    NUM_EPOCHS = 20000 * width
+    NUM_EPOCHS = 10000 * width
     LEARNING_RATE = 0.15 / width
     print(f"Number of epochs: {NUM_EPOCHS}")
     print(f"Learning rate: {LEARNING_RATE}")
@@ -353,7 +353,7 @@ def train_model(width):
             for _ in range(num_layers):
                 layer = nn.Linear(input_dim, neurons_per_layer)
                 # Weight initialization with std = 1 / input_dim
-                nn.init.normal_(layer.weight, mean=0.0, std=1.0 / input_dim)
+                nn.init.normal_(layer.weight, mean=0.0, std=1.0 / math.sqrt(input_dim))
                 nn.init.normal_(layer.bias, mean=0.0, std=1.0)
                 layers.append(layer)
                 layers.append(nn.Tanh())
@@ -361,7 +361,7 @@ def train_model(width):
 
             final_layer = nn.Linear(input_dim, 1)
             # Weight initialization for final layer with std = 1 / input_dim
-            nn.init.normal_(final_layer.weight, mean=0.0, std=1.0 / input_dim)
+            nn.init.normal_(final_layer.weight, mean=0.0, std=1.0 / math.sqrt(input_dim))
             nn.init.normal_(final_layer.bias, mean=0.0, std=1.0)
             layers.append(final_layer)
 
