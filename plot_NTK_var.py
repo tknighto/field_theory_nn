@@ -100,7 +100,7 @@ widths = range(25, 90, 20) # Make sure this matches the widths used in training
 # We need to select times that are representative and likely to have data across widths.
 # Let's choose times that are roughly at the beginning, middle, and end of the recorded times.
 # We will find the closest recorded time for each width later.
-target_times = [0,1000, 2000, 2990] # These are the times we want to plot against
+target_times = [0, 2990] # These are the times we want to plot against
 
 # Dictionary to store the variance and standard error of the trace for plotting
 variance_trace_at_times_across_widths = {target_time: [] for target_time in target_times}
